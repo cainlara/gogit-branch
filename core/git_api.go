@@ -62,7 +62,7 @@ func printAsTable(branches []model.Branch) {
 
 		for index, branch := range branches {
 			t.AppendRows([]table.Row{
-				{index + 1, branch.GetRefName(), branch.GetShortHash()},
+				{index + 1, branch.GetShortName(), branch.GetShortHash()},
 			})
 		}
 
