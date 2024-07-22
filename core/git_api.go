@@ -49,6 +49,11 @@ func PerformSwitch(selectedBranch model.Branch) error {
 	return nil
 }
 
+func PerformDeleteBranch(selectedBranch model.Branch) error {
+
+	return nil
+}
+
 func readBranches(path string) ([]model.Branch, error) {
 	repo, err := git.PlainOpen(path)
 	if err != nil {

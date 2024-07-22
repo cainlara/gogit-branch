@@ -12,7 +12,7 @@ import (
 
 func ListCurrentBranches() error {
 	fmt.Println()
-	color.Green("Listing branches")
+	color.Cyan("Listing branches")
 
 	branches, err := core.GetBranches()
 	if err != nil {
