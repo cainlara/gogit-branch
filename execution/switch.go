@@ -3,7 +3,6 @@ package execution
 import (
 	"cainlara/gogit-branch/core"
 	"cainlara/gogit-branch/model"
-	"fmt"
 
 	"github.com/manifoldco/promptui"
 )
@@ -19,9 +18,7 @@ func BrowseAndSwitchBranches() error {
 		return err
 	}
 
-	fmt.Print(selectedBranch)
-
-	return nil
+	return core.PerformSwitch(selectedBranch)
 }
 
 func listBranchesAndSelectTarget(options []model.Branch) (model.Branch, error) {
