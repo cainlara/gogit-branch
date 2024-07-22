@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"cainlara/gogit-branch/execution"
+
+	"github.com/fatih/color"
 )
 
 const (
@@ -32,12 +35,18 @@ func triggerExecution(args []string) {
 
 	arg := args[0]
 
+	var err error
+
 	switch arg {
 	case MODE_LIST_LONG, MODE_LIST_SHORT:
-		execution.ListCurrentBranches()
+		err = execution.ListCurrentBranches()
 	case MODE_HELP_LONG, MODE_HELP_SHORT:
 		execution.PrintHelp(false)
 	default:
 		execution.PrintHelp(true)
+	}
+
+	if err != nil {
+		color.Red(fmt.Sprintf("Error Retrieving Path: %v\n", err))
 	}
 }
