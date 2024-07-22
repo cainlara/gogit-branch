@@ -10,10 +10,12 @@ import (
 )
 
 const (
-	MODE_LIST_LONG  = "list"
-	MODE_LIST_SHORT = "ls"
-	MODE_HELP_LONG  = "help"
-	MODE_HELP_SHORT = "h"
+	MODE_LIST_LONG    = "list"
+	MODE_LIST_SHORT   = "ls"
+	MODE_HELP_LONG    = "help"
+	MODE_HELP_SHORT   = "h"
+	MODE_SWITCH_LONG  = "switch"
+	MODE_SWITCH_SHORT = "sw"
 )
 
 func main() {
@@ -42,6 +44,8 @@ func triggerExecution(args []string) {
 		err = execution.ListCurrentBranches()
 	case MODE_HELP_LONG, MODE_HELP_SHORT:
 		execution.PrintHelp(false)
+	case MODE_SWITCH_LONG, MODE_SWITCH_SHORT:
+		err = execution.BrowseAndSwitchBranches()
 	default:
 		execution.PrintHelp(true)
 	}
