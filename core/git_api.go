@@ -38,7 +38,7 @@ func PerformSwitch(selectedBranch model.Branch) error {
 
 	err = workTree.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.ReferenceName(selectedBranch.GetRefName()),
-		Force:  true,
+		Force:  false,
 	})
 	if err != nil {
 		return err
