@@ -1,6 +1,5 @@
 # TO DO
 - Build flags list
-    - Build help command
     - Build list
     - Build switch
     - Build delete single
