@@ -5,4 +5,4 @@
     - Build switch
     - Build delete single
     - Build delete all but this
-- Prevent acticion if pending changes
+- Prevent action if pending changes

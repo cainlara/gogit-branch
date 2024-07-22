@@ -1,0 +1,24 @@
+package execution
+
+import (
+	"fmt"
+
+	"github.com/fatih/color"
+)
+
+func PrintHelp(withError bool) {
+	fmt.Println()
+
+	if withError {
+		color.Red("This tool can't understand what you are tryng to do.")
+		fmt.Println()
+	}
+
+	color.Green("Usage:")
+	fmt.Println("list, ls:\t\tList all the branches in the current working directory.")
+	fmt.Println("switch, sw:\t\tList all the branches available to switch.")
+	fmt.Println("delete, del:\t\tDelete all branches but the current one.")
+	fmt.Println("deleteSingle, ds:\tSelect a branch to delete.")
+	fmt.Println("help, h:\t\tPrint this help.")
+	fmt.Println()
+}
