@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	MODE_LIST_LONG           = "list"
-	MODE_LIST_SHORT          = "ls"
-	MODE_HELP_LONG           = "help"
-	MODE_HELP_SHORT          = "h"
-	MODE_SWITCH_LONG         = "switch"
-	MODE_SWITCH_SHORT        = "sw"
-	MODE_DELETE_SINGLE_LONG  = "deleteSingle"
-	MODE_DELETE_SINGLE_SHORT = "ds"
+	MODE_LIST_LONG    = "list"
+	MODE_LIST_SHORT   = "ls"
+	MODE_HELP_LONG    = "help"
+	MODE_HELP_SHORT   = "h"
+	MODE_SWITCH_LONG  = "switch"
+	MODE_SWITCH_SHORT = "sw"
+	MODE_DELETE_LONG  = "delete"
+	MODE_DELETE_SHORT = "del"
 )
 
 func main() {
@@ -48,7 +48,7 @@ func triggerExecution(args []string) {
 		execution.PrintHelp(false)
 	case MODE_SWITCH_LONG, MODE_SWITCH_SHORT:
 		err = execution.BrowseAndSwitchBranches()
-	case MODE_DELETE_SINGLE_LONG, MODE_DELETE_SINGLE_SHORT:
+	case MODE_DELETE_LONG, MODE_DELETE_SHORT:
 		err = execution.ListAndDeleteBranch()
 	default:
 		execution.PrintHelp(true)

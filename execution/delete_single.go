@@ -31,7 +31,7 @@ func ListAndDeleteBranch() error {
 	if confirmDeleteSelectedBranch(selectedBranch) {
 		return core.PerformDeleteBranch(selectedBranch)
 	} else {
-		color.Blue("Deletion aborted")
+		color.Blue("\nDeletion aborted")
 	}
 
 	return nil
