@@ -31,7 +31,7 @@ func GetBranches(skipCurrent bool) ([]model.Branch, error) {
 
 		}
 
-		branches = filtered
+		return filtered, nil
 	}
 
 	return branches, nil
