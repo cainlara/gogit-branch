@@ -50,10 +50,17 @@ func PerformSwitch(selectedBranch model.Branch) error {
 }
 
 func PerformDeleteBranch(selectedBranch model.Branch) error {
-	fmt.Printf("Delete \U0001F571 Branch %s\n", selectedBranch.GetShortName())
-	fmt.Println("Delete \U0001F33F ")
+	path, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 
-	return nil
+	repo, err := git.PlainOpen(path)
+	if err != nil {
+		return err
+	}
+
+	return repo.Storer.RemoveReference(plumbing.ReferenceName(selectedBranch.GetRefName()))
 }
 
 func readBranches(path string) ([]model.Branch, error) {
