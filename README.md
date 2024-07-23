@@ -1,5 +1,5 @@
 # GoGit Utility Belt
-An git utility wrapping the git commands I use the most, written purely in __Go__.
+A _git_ utility wrapping the git commands I use the most, written purely in __Go__.
 
 # Available commands
 - list, ls: List all the branches in the current working directory.
