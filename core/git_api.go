@@ -23,12 +23,12 @@ func GetBranches(skipCurrent bool) ([]model.Branch, error) {
 	}
 
 	if skipCurrent {
-		filtered := make([]model.Branch, len(branches)-1)
+		var filtered []model.Branch
+
 		for _, branch := range branches {
 			if !branch.IsCurrentBranch() {
 				filtered = append(filtered, branch)
 			}
-
 		}
 
 		return filtered, nil

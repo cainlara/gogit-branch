@@ -10,7 +10,7 @@ import (
 
 func BrowseAndSwitchBranches() error {
 	fmt.Println()
-	color.Cyan("Listing branches")
+	color.Cyan("Switching branches")
 
 	branches, err := core.GetBranches(true)
 	if err != nil {
