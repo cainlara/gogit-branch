@@ -1,12 +1,5 @@
-# TO DO
-- Build flags list
-    - Build list
-    - Build switch
-    - Build delete single
-- Prevent actions when pending changes
+# GoGit Utility Belt
+An git utility wrapping the git commands I use the most, written purely in __Go__.
 
-- Tests
-    - Test help
-    - Test list
-    - Test switch
-    - Test delete single
+
+

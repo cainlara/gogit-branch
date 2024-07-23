@@ -43,4 +43,7 @@ go.work
 .history
 .ionide
 
+### Local Dev Env Helpers ###
+TODO.md
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,go
