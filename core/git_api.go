@@ -81,10 +81,15 @@ func readBranches(path string) ([]model.Branch, error) {
 		return nil, err
 	}
 
+	head, err := repo.Head()
+	if err != nil {
+		return nil, err
+	}
+
 	var branches []model.Branch
 
 	err = iter.ForEach(func(c *plumbing.Reference) error {
-		b := model.NewBranch(string(c.Name()), c.Name().Short(), c.Hash().String()[:7], c.Hash().String())
+		b := model.NewBranch(string(c.Name()), c.Name().Short(), c.Hash().String()[:7], c.Hash().String(), head.Name() == c.Name())
 		branches = append(branches, *b)
 		return nil
 	})

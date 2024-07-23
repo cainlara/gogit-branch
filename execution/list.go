@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/jedib0t/go-pretty/table"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 func ListCurrentBranches() error {
@@ -29,12 +29,16 @@ func printAsTable(branches []model.Branch) {
 	} else {
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"#", "Branch Name", "Current Hash"})
+		t.AppendHeader(table.Row{"", "Branch Name", "Current Hash"})
 
-		for index, branch := range branches {
-			t.AppendRows([]table.Row{
-				{index + 1, branch.GetShortName(), branch.GetShortHash()},
-			})
+		for _, branch := range branches {
+			isCurrent := ""
+
+			if branch.IsCurrentBranch() {
+				isCurrent = "*"
+			}
+
+			t.AppendRow(table.Row{isCurrent, branch.GetShortName(), branch.GetShortHash()})
 		}
 
 		t.Render()
