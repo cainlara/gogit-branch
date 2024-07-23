@@ -1,4 +1,5 @@
 # TO DO
+- Remove current branch from options
 - Build flags list
     - Build list
     - Build switch

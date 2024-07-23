@@ -60,7 +60,14 @@ func PerformDeleteBranch(selectedBranch model.Branch) error {
 		return err
 	}
 
-	return repo.Storer.RemoveReference(plumbing.ReferenceName(selectedBranch.GetRefName()))
+	err = repo.Storer.RemoveReference(plumbing.ReferenceName(selectedBranch.GetRefName()))
+	if err != nil {
+		return err
+	}
+
+	color.Green(fmt.Sprintf("Branch %s (%s) deleted\n", selectedBranch.GetShortName(), selectedBranch.GetShortHash()))
+
+	return nil
 }
 
 func readBranches(path string) ([]model.Branch, error) {
