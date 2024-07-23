@@ -53,15 +53,6 @@ func PerformSwitch(selectedBranch model.Branch) error {
 		return err
 	}
 
-	status, err := workTree.Status()
-	if err != nil {
-		return err
-	}
-
-	if !status.IsClean() {
-		return fmt.Errorf("you can't switch to %s because you have uncommited changes", selectedBranch.GetShortName())
-	}
-
 	err = workTree.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.ReferenceName(selectedBranch.GetRefName()),
 		Force:  true,
