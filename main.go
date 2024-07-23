@@ -55,6 +55,6 @@ func triggerExecution(args []string) {
 	}
 
 	if err != nil {
-		color.Red(fmt.Sprintf("Error Retrieving Path: %v\n", err))
+		color.Red(fmt.Sprintf("Operation Failed: %v\n", err))
 	}
 }
