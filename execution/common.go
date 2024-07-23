@@ -2,16 +2,25 @@ package execution
 
 import (
 	"cainlara/gogit-branch/model"
+	"fmt"
 
 	"github.com/manifoldco/promptui"
 )
 
-func listBranchesAndSelectTarget(options []model.Branch) (model.Branch, error) {
+const (
+	EMOJI_HERB  = "\U0001F33F"
+	EMOJI_SKULL = "\U0001F571"
+)
+
+func listBranchesAndSelectTarget(options []model.Branch, icon string) (model.Branch, error) {
+	activeCopy := fmt.Sprintf("%s {{ .GetShortName | cyan }} ({{ .GetFullHash | red }})", icon)
+	selectedCopy := fmt.Sprintf("%s {{ .GetRefName | green}} Selected", icon)
+
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}",
-		Active:   "\U0001F33F {{ .GetShortName | cyan }} ({{ .GetFullHash | red }})",
+		Active:   activeCopy,
 		Inactive: "  {{ .GetShortName | cyan }} ({{ .GetShortHash | red }})",
-		// Selected: "Switching to \U0001F33F {{ .GetRefName | green}}",
+		Selected: selectedCopy,
 	}
 
 	prompt := promptui.Select{

@@ -50,6 +50,8 @@ func PerformSwitch(selectedBranch model.Branch) error {
 }
 
 func PerformDeleteBranch(selectedBranch model.Branch) error {
+	fmt.Printf("Delete \U0001F571 Branch %s\n", selectedBranch.GetShortName())
+	fmt.Println("Delete \U0001F33F ")
 
 	return nil
 }

@@ -16,7 +16,7 @@ func BrowseAndSwitchBranches() error {
 		return err
 	}
 
-	selectedBranch, err := listBranchesAndSelectTarget(branches)
+	selectedBranch, err := listBranchesAndSelectTarget(branches, EMOJI_HERB)
 	if err != nil {
 		return err
 	}
