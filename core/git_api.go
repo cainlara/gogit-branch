@@ -11,13 +11,30 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
-func GetBranches() ([]model.Branch, error) {
+func GetBranches(skipCurrent bool) ([]model.Branch, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
-	return readBranches(currentDir)
+	branches, err := readBranches(currentDir)
+	if err != nil {
+		return nil, err
+	}
+
+	if skipCurrent {
+		filtered := make([]model.Branch, len(branches)-1)
+		for _, branch := range branches {
+			if !branch.IsCurrentBranch() {
+				filtered = append(filtered, branch)
+			}
+
+		}
+
+		branches = filtered
+	}
+
+	return branches, nil
 }
 
 func PerformSwitch(selectedBranch model.Branch) error {

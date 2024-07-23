@@ -14,7 +14,7 @@ func ListCurrentBranches() error {
 	fmt.Println()
 	color.Cyan("Listing branches")
 
-	branches, err := core.GetBranches()
+	branches, err := core.GetBranches(false)
 	if err != nil {
 		return err
 	}

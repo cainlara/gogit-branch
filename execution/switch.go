@@ -11,7 +11,7 @@ func BrowseAndSwitchBranches() error {
 	fmt.Println()
 	color.Cyan("Listing branches")
 
-	branches, err := core.GetBranches()
+	branches, err := core.GetBranches(true)
 	if err != nil {
 		return err
 	}

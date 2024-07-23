@@ -13,7 +13,7 @@ func ListAndDeleteBranch() error {
 	fmt.Println()
 	color.Cyan("Deleting branch")
 
-	branches, err := core.GetBranches()
+	branches, err := core.GetBranches(true)
 	if err != nil {
 		return err
 	}
