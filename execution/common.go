@@ -9,7 +9,7 @@ import (
 
 const (
 	EMOJI_HERB  = "\U0001F33F"
-	EMOJI_SKULL = "\U0001F571"
+	EMOJI_SKULL = "\U0001F480"
 )
 
 func listBranchesAndSelectTarget(options []model.Branch, icon string) (model.Branch, error) {
