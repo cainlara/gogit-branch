@@ -52,7 +52,7 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 	case MODE_SWITCH_LONG, MODE_SWITCH_SHORT:
 		err = execution.BrowseAndSwitchBranches(gitClient)
 	case MODE_DELETE_LONG, MODE_DELETE_SHORT:
-		err = execution.ListAndDeleteBranch()
+		err = execution.ListAndDeleteBranch(gitClient)
 	default:
 		execution.PrintHelp(true)
 	}

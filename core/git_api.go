@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
-func GetBranches(skipCurrent bool) ([]model.Branch, error) {
+func getBranches(skipCurrent bool) ([]model.Branch, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func GetBranches(skipCurrent bool) ([]model.Branch, error) {
 	return branches, nil
 }
 
-func PerformSwitch(selectedBranch model.Branch, gitClient *GitClient) error {
+func performSwitch(selectedBranch model.Branch, gitClient *GitClient) error {
 	path, err := os.Getwd()
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func PerformSwitch(selectedBranch model.Branch, gitClient *GitClient) error {
 	return nil
 }
 
-func PerformDeleteBranch(selectedBranch model.Branch) error {
+func performDeleteBranch(selectedBranch model.Branch) error {
 	path, err := os.Getwd()
 	if err != nil {
 		return err

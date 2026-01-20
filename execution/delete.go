@@ -10,11 +10,11 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func ListAndDeleteBranch() error {
+func ListAndDeleteBranch(gitClient *core.GitClient) error {
 	fmt.Println()
 	color.Cyan("Deleting branch")
 
-	branches, err := core.GetBranches(true)
+	branches, err := gitClient.Branches(false)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func ListAndDeleteBranch() error {
 	}
 
 	if confirmDeleteSelectedBranch(selectedBranch) {
-		return core.PerformDeleteBranch(selectedBranch)
+		return gitClient.DeleteBranch(selectedBranch)
 	} else {
 		color.Blue("\nDeletion aborted")
 	}

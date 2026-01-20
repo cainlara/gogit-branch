@@ -117,3 +117,18 @@ func (g *GitClient) Checkout(branch model.Branch) error {
 
 	return nil
 }
+
+func (g *GitClient) DeleteBranch(branch model.Branch) error {
+	out, err := g.runGitCommandCombinedOutput("branch", "-D", branch.GetName())
+	if err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	return nil
+}
