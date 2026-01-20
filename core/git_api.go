@@ -37,7 +37,7 @@ func GetBranches(skipCurrent bool) ([]model.Branch, error) {
 	return branches, nil
 }
 
-func PerformSwitch(selectedBranch model.Branch) error {
+func PerformSwitch(selectedBranch model.Branch, gitClient *GitClient) error {
 	path, err := os.Getwd()
 	if err != nil {
 		return err
@@ -54,14 +54,14 @@ func PerformSwitch(selectedBranch model.Branch) error {
 	}
 
 	err = workTree.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName(selectedBranch.GetRefName()),
+		Branch: plumbing.ReferenceName(selectedBranch.GetName()),
 		Force:  true,
 	})
 	if err != nil {
 		return err
 	}
 
-	color.Green(fmt.Sprintf("Switched to Branch %s\n", selectedBranch.GetShortName()))
+	color.Green(fmt.Sprintf("Switched to Branch %s\n", selectedBranch.GetName()))
 
 	return nil
 }
@@ -77,12 +77,12 @@ func PerformDeleteBranch(selectedBranch model.Branch) error {
 		return err
 	}
 
-	err = repo.Storer.RemoveReference(plumbing.ReferenceName(selectedBranch.GetRefName()))
+	err = repo.Storer.RemoveReference(plumbing.ReferenceName(selectedBranch.GetName()))
 	if err != nil {
 		return err
 	}
 
-	color.Green(fmt.Sprintf("Branch %s (%s) deleted\n", selectedBranch.GetShortName(), selectedBranch.GetShortHash()))
+	color.Green(fmt.Sprintf("Branch %s (%s) deleted\n", selectedBranch.GetName(), selectedBranch.GetFullHash()))
 
 	return nil
 }
@@ -106,7 +106,7 @@ func readBranches(path string) ([]model.Branch, error) {
 	var branches []model.Branch
 
 	err = iter.ForEach(func(c *plumbing.Reference) error {
-		b := model.NewBranch(string(c.Name()), c.Name().Short(), c.Hash().String()[:7], c.Hash().String(), head.Name() == c.Name())
+		b := model.NewBranch(string(c.Name()), c.Hash().String()[:7], c.Hash().String(), head.Name() == c.Name())
 		branches = append(branches, *b)
 		return nil
 	})

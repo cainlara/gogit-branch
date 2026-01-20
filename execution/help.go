@@ -10,7 +10,7 @@ func PrintHelp(withError bool) {
 	fmt.Println()
 
 	if withError {
-		color.Red("This tool can't understand what you are tryng to do.")
+		color.Red("This tool can't understand what you are trying to do.")
 		fmt.Println()
 	}
 

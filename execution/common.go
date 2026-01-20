@@ -13,13 +13,13 @@ const (
 )
 
 func listBranchesAndSelectTarget(options []model.Branch, icon string) (model.Branch, error) {
-	activeCopy := fmt.Sprintf("%s {{ .GetShortName | cyan }} ({{ .GetFullHash | red }})", icon)
-	selectedCopy := fmt.Sprintf("%s {{ .GetRefName | green}} Selected", icon)
+	activeCopy := fmt.Sprintf("%s {{ .GetName | cyan }} ({{ .GetFullHash | red }})", icon)
+	selectedCopy := fmt.Sprintf("%s {{ .GetName | green}} Selected", icon)
 
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}",
 		Active:   activeCopy,
-		Inactive: "  {{ .GetShortName | cyan }} ({{ .GetShortHash | red }})",
+		Inactive: "  {{ .GetName | cyan }} ({{ .GetShortHash | red }})",
 		Selected: selectedCopy,
 	}
 

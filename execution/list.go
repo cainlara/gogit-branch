@@ -10,14 +10,11 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
-var GitClient = core.NewGitClient("")
-
-func ListCurrentBranches() error {
+func ListCurrentBranches(gitClient *core.GitClient) error {
 	fmt.Println()
 	color.Cyan("Listing branches")
 
-	// branches, err := core.GetBranches(false)
-	branches, err := GitClient.Branches()
+	branches, err := gitClient.Branches(true)
 
 	if err != nil {
 		return err
@@ -33,7 +30,7 @@ func printAsTable(branches []model.Branch) {
 	} else {
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"Current", "Branch Name"})
+		t.AppendHeader(table.Row{"Current", "Branch Name", "Current Hash"})
 
 		for _, branch := range branches {
 			isCurrent := ""
@@ -42,7 +39,7 @@ func printAsTable(branches []model.Branch) {
 				isCurrent = "*"
 			}
 
-			t.AppendRow(table.Row{isCurrent, branch.GetShortName()})
+			t.AppendRow(table.Row{isCurrent, branch.GetName(), branch.GetShortHash()})
 		}
 
 		t.Render()

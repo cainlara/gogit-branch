@@ -1,18 +1,16 @@
 package model
 
 type Branch struct {
-	refName       string
-	shortName     string
+	name          string
 	shortHash     string
 	fullHash      string
 	currentBranch bool
 }
 
-func NewBranch(refName, shortName, shortHash, fullHash string, currentBranch bool) *Branch {
+func NewBranch(name, shortHash, fullHash string, currentBranch bool) *Branch {
 	b := new(Branch)
 
-	b.refName = refName
-	b.shortName = shortName
+	b.name = name
 	b.shortHash = shortHash
 	b.fullHash = fullHash
 	b.currentBranch = currentBranch
@@ -20,20 +18,12 @@ func NewBranch(refName, shortName, shortHash, fullHash string, currentBranch boo
 	return b
 }
 
-func (b Branch) GetRefName() string {
-	return b.refName
+func (b Branch) GetName() string {
+	return b.name
 }
 
-func (b *Branch) SetRefName(refName string) {
-	b.refName = refName
-}
-
-func (b Branch) GetShortName() string {
-	return b.shortName
-}
-
-func (b *Branch) SetShortName(shortName string) {
-	b.shortName = shortName
+func (b *Branch) SetName(name string) {
+	b.name = name
 }
 
 func (b Branch) GetShortHash() string {
