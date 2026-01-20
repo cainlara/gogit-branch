@@ -2,11 +2,15 @@ package core
 
 import (
 	"cainlara/gogit-branch/model"
+	"errors"
 	"os/exec"
 	"strings"
 )
 
-const CURRENT_BRANCH_PREFIX = "* "
+const (
+	CURRENT_BRANCH_PREFIX = "* "
+	OUTPUT_ERROR_PREFIX   = "error:"
+)
 
 type GitClient struct {
 	Path string
@@ -53,7 +57,7 @@ func (g *GitClient) runGitCommandCombinedOutput(args ...string) ([]byte, error) 
 	return cmd.CombinedOutput()
 }
 
-func (g *GitClient) Branches() ([]model.Branch, error) {
+func (g *GitClient) Branches(includeCurrent bool) ([]model.Branch, error) {
 	out, err := g.runGitCommand("branch")
 
 	if err != nil {
@@ -76,10 +80,40 @@ func (g *GitClient) Branches() ([]model.Branch, error) {
 			branchName = strings.TrimSpace(line)
 		}
 
-		branch := model.NewBranch(branchName, branchName, "", "", isCurrent)
+		if isCurrent && !includeCurrent {
+			continue
+		}
+
+		branch := model.NewBranch(branchName, "", "", isCurrent)
+
+		hashOutput, err := g.runGitCommand("rev-parse", branch.GetName())
+		if err != nil {
+			return nil, err
+		}
+
+		fullHash := strings.TrimSpace(string(hashOutput))
+		shortHash := fullHash[:7]
+
+		branch.SetFullHash(fullHash)
+		branch.SetShortHash(shortHash)
 
 		branches = append(branches, *branch)
 	}
 
 	return branches, nil
+}
+
+func (g *GitClient) Checkout(branch model.Branch) error {
+	out, err := g.runGitCommandCombinedOutput("checkout", branch.GetName())
+	if err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	return nil
 }

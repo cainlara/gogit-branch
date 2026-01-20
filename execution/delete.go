@@ -39,7 +39,7 @@ func ListAndDeleteBranch() error {
 
 func confirmDeleteSelectedBranch(branch model.Branch) bool {
 	prompt := promptui.Prompt{
-		Label:     fmt.Sprintf("Are you sure you want to delete %s (%s) [Type yes or y to continue or anything else to cancel]?", branch.GetShortName(), branch.GetShortHash()),
+		Label:     fmt.Sprintf("Are you sure you want to delete %s (%s) [Type yes or y to continue or anything else to cancel]?", branch.GetName(), branch.GetFullHash()),
 		IsConfirm: true,
 	}
 

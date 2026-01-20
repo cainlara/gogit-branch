@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"cainlara/gogit-branch/core"
 	"cainlara/gogit-branch/execution"
 
 	"github.com/fatih/color"
@@ -21,18 +22,20 @@ const (
 )
 
 func main() {
+	gitClient := core.NewGitClient("")
+
 	if len(os.Args) < 2 {
-		execution.ListCurrentBranches()
+		execution.ListCurrentBranches(gitClient)
 
 		return
 	}
 
 	argsWithoutProg := os.Args[1:]
 
-	triggerExecution(argsWithoutProg)
+	triggerExecution(argsWithoutProg, gitClient)
 }
 
-func triggerExecution(args []string) {
+func triggerExecution(args []string, gitClient *core.GitClient) {
 	if len(args) > 1 {
 		execution.PrintHelp(true)
 	}
@@ -43,11 +46,11 @@ func triggerExecution(args []string) {
 
 	switch arg {
 	case MODE_LIST_LONG, MODE_LIST_SHORT:
-		err = execution.ListCurrentBranches()
+		err = execution.ListCurrentBranches(gitClient)
 	case MODE_HELP_LONG, MODE_HELP_SHORT:
 		execution.PrintHelp(false)
 	case MODE_SWITCH_LONG, MODE_SWITCH_SHORT:
-		err = execution.BrowseAndSwitchBranches()
+		err = execution.BrowseAndSwitchBranches(gitClient)
 	case MODE_DELETE_LONG, MODE_DELETE_SHORT:
 		err = execution.ListAndDeleteBranch()
 	default:

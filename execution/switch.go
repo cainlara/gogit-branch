@@ -8,11 +8,11 @@ import (
 	"github.com/fatih/color"
 )
 
-func BrowseAndSwitchBranches() error {
+func BrowseAndSwitchBranches(gitClient *core.GitClient) error {
 	fmt.Println()
 	color.Cyan("Switching branches")
 
-	branches, err := core.GetBranches(true)
+	branches, err := gitClient.Branches(false)
 	if err != nil {
 		return err
 	}
@@ -26,5 +26,5 @@ func BrowseAndSwitchBranches() error {
 		return err
 	}
 
-	return core.PerformSwitch(selectedBranch)
+	return gitClient.Checkout(selectedBranch)
 }
