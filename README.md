@@ -15,6 +15,8 @@
 
 **GoGit Branch Manager** is a streamlined command-line utility that simplifies Git branch operations through an intuitive, interactive interface. Built with Go, it wraps commonly-used Git commands into a cohesive tool that enhances developer productivity by providing visual feedback, interactive selection menus, and safety confirmations.
 
+This tool is inspired by the amazing package [froggit](https://github.com/thewizardshell/froggit). Please go ahead and check it out!
+
 ### Key Features
 
 - 🌿 **Interactive Branch Switching** - Browse and switch between branches with an elegant selection interface
@@ -41,10 +43,10 @@ git clone https://github.com/cainlara/gogit-branch.git
 cd gogit-branch
 
 # Build the binary
-go build -o gogit-branch
+go build -trimpath -ldflags="-s -w" -o gogit
 
 # (Optional) Move to a directory in your PATH
-mv gogit-branch /usr/local/bin/
+mv gogit /usr/local/bin/
 ```
 
 ### Using Go Install
@@ -113,6 +115,7 @@ Switching branches
 Select Target Branch
 🌿 feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
   bugfix-y (i7j8k9l)
+  Cancel Switch
 ```
 
 #### Delete a Branch
@@ -128,7 +131,7 @@ Deleting branch
 Select Target Branch
 💀 feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
   bugfix-y (i7j8k9l)
-
+  Cancel Delete
 Are you sure you want to delete feature-x (e4f5g6h1234567890abcdef1234567890abcdef)? 
 [Type yes or y to continue or anything else to cancel]
 ```
@@ -155,25 +158,6 @@ Are you sure you want to delete feature-x (e4f5g6h1234567890abcdef1234567890abcd
 ---
 
 ## 🛠️ Development
-
-### Running Tests
-
-```bash
-go test ./...
-```
-
-### Building for Multiple Platforms
-
-```bash
-# Linux
-GOOS=linux GOARCH=amd64 go build -o gogit-branch-linux
-
-# macOS
-GOOS=darwin GOARCH=amd64 go build -o gogit-branch-macos
-
-# Windows
-GOOS=windows GOARCH=amd64 go build -o gogit-branch.exe
-```
 
 ### Code Organization
 
