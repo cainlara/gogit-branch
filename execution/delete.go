@@ -46,7 +46,7 @@ func ListAndDeleteBranch(gitClient *core.GitClient) error {
 
 func confirmDeleteSelectedBranch(branch model.Branch) bool {
 	prompt := promptui.Prompt{
-		Label:     fmt.Sprintf("Are you sure you want to delete %s (%s) [Type yes or y to continue or anything else to cancel]?", branch.GetName(), branch.GetFullHash()),
+		Label:     fmt.Sprintf("Are you sure you want to delete %s (%s) [Type yes or y to continue or n to cancel]?", branch.GetName(), branch.GetShortHash()),
 		IsConfirm: true,
 	}
 
