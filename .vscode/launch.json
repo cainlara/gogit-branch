@@ -17,6 +17,16 @@
             "args": [
                 "switch"
             ]
+        },
+        {
+            "name": "Delete",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "delete"
+            ]
         }
     ]
 }
