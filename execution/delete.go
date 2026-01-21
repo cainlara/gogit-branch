@@ -23,14 +23,15 @@ func ListAndDeleteBranch(gitClient *core.GitClient) error {
 		return errors.New("no branches to select from")
 	}
 
-	branches = append(branches, *model.NewBranch("Cancel Delete", "", "", false))
+	cancelOption := model.NewDummyBranch("Cancel Delete")
+	branches = append(branches, *cancelOption)
 
 	selectedBranch, err := listBranchesAndSelectTarget(branches, EMOJI_SKULL)
 	if err != nil {
 		return err
 	}
 
-	if selectedBranch.GetName() == "Cancel Delete" {
+	if selectedBranch.IsDummyBranch() {
 		return nil
 	}
 

@@ -22,14 +22,15 @@ func BrowseAndSwitchBranches(gitClient *core.GitClient) error {
 		return errors.New("no branches to select from")
 	}
 
-	branches = append(branches, *model.NewBranch("Cancel Switch", "", "", false))
+	cancelOption := model.NewDummyBranch("Cancel Switch")
+	branches = append(branches, *cancelOption)
 
 	selectedBranch, err := listBranchesAndSelectTarget(branches, EMOJI_HERB)
 	if err != nil {
 		return err
 	}
 
-	if selectedBranch.GetName() == "Cancel Switch" {
+	if selectedBranch.IsDummyBranch() {
 		return nil
 	}
 

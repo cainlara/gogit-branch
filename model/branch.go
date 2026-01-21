@@ -5,6 +5,7 @@ type Branch struct {
 	shortHash     string
 	fullHash      string
 	currentBranch bool
+	isDummy       bool
 }
 
 func NewBranch(name, shortHash, fullHash string, currentBranch bool) *Branch {
@@ -14,6 +15,19 @@ func NewBranch(name, shortHash, fullHash string, currentBranch bool) *Branch {
 	b.shortHash = shortHash
 	b.fullHash = fullHash
 	b.currentBranch = currentBranch
+	b.isDummy = false
+
+	return b
+}
+
+func NewDummyBranch(name string) *Branch {
+	b := new(Branch)
+
+	b.name = name
+	b.shortHash = ""
+	b.fullHash = ""
+	b.currentBranch = false
+	b.isDummy = true
 
 	return b
 }
@@ -48,4 +62,8 @@ func (b Branch) IsCurrentBranch() bool {
 
 func (b *Branch) SetCurrentBranch(currentBranch bool) {
 	b.currentBranch = currentBranch
+}
+
+func (b Branch) IsDummyBranch() bool {
+	return b.isDummy
 }
