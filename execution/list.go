@@ -21,6 +21,7 @@ func ListCurrentBranches(gitClient *core.GitClient) error {
 	}
 
 	printAsTable(branches)
+
 	return nil
 }
 
@@ -30,7 +31,12 @@ func printAsTable(branches []model.Branch) {
 	} else {
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"Current", "Branch Name", "Current Hash"})
+
+		green := color.New(color.FgGreen).SprintFunc()
+		yellow := color.New(color.FgYellow, color.Bold).SprintFunc()
+		magenta := color.New(color.FgMagenta, color.Bold).SprintFunc()
+
+		t.AppendHeader(table.Row{yellow("Current"), yellow("Branch Name"), yellow("Current Hash")})
 
 		for _, branch := range branches {
 			isCurrent := ""
@@ -39,7 +45,7 @@ func printAsTable(branches []model.Branch) {
 				isCurrent = "*"
 			}
 
-			t.AppendRow(table.Row{isCurrent, branch.GetName(), branch.GetShortHash()})
+			t.AppendRow(table.Row{magenta(isCurrent), green(branch.GetName()), green(branch.GetShortHash())})
 		}
 
 		t.Render()

@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run",
+            "name": "List",
             "type": "go",
             "request": "launch",
             "mode": "auto",
@@ -26,6 +26,16 @@
             "program": "${workspaceFolder}",
             "args": [
                 "delete"
+            ]
+        },
+        {
+            "name": "Batch Delete",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "batch-delete"
             ]
         }
     ]
