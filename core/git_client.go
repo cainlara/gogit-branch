@@ -132,3 +132,26 @@ func (g *GitClient) DeleteBranch(branch model.Branch) error {
 
 	return nil
 }
+
+func (g *GitClient) DeleteBranches(branches []model.Branch) error {
+	args := make([]string, 0, len(branches)+2)
+	args = append(args, "branch")
+	args = append(args, "-D")
+
+	for _, branch := range branches {
+		args = append(args, branch.GetName())
+	}
+
+	out, err := g.runGitCommandCombinedOutput(args...)
+	if err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	return nil
+}

@@ -6,6 +6,8 @@ type Branch struct {
 	fullHash      string
 	currentBranch bool
 	isDummy       bool
+	isSelected    bool
+	isDone        bool
 }
 
 func NewBranch(name, shortHash, fullHash string, currentBranch bool) *Branch {
@@ -16,6 +18,8 @@ func NewBranch(name, shortHash, fullHash string, currentBranch bool) *Branch {
 	b.fullHash = fullHash
 	b.currentBranch = currentBranch
 	b.isDummy = false
+	b.isSelected = false
+	b.isDone = false
 
 	return b
 }
@@ -28,6 +32,22 @@ func NewDummyBranch(name string) *Branch {
 	b.fullHash = ""
 	b.currentBranch = false
 	b.isDummy = true
+	b.isSelected = false
+	b.isDone = false
+
+	return b
+}
+
+func NewDoneBranch(name string) *Branch {
+	b := new(Branch)
+
+	b.name = name
+	b.shortHash = ""
+	b.fullHash = ""
+	b.currentBranch = false
+	b.isDummy = false
+	b.isSelected = false
+	b.isDone = true
 
 	return b
 }
@@ -66,4 +86,20 @@ func (b *Branch) SetCurrentBranch(currentBranch bool) {
 
 func (b Branch) IsDummyBranch() bool {
 	return b.isDummy
+}
+
+func (b Branch) IsSelected() bool {
+	return b.isSelected
+}
+
+func (b *Branch) SetSelected(selected bool) {
+	b.isSelected = selected
+}
+
+func (b Branch) IsDone() bool {
+	return b.isDone
+}
+
+func (b Branch) String() string {
+	return b.name + " (" + b.shortHash + ")"
 }

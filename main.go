@@ -11,14 +11,16 @@ import (
 )
 
 const (
-	MODE_LIST_LONG    = "list"
-	MODE_LIST_SHORT   = "ls"
-	MODE_HELP_LONG    = "help"
-	MODE_HELP_SHORT   = "h"
-	MODE_SWITCH_LONG  = "switch"
-	MODE_SWITCH_SHORT = "sw"
-	MODE_DELETE_LONG  = "delete"
-	MODE_DELETE_SHORT = "del"
+	MODE_LIST_LONG          = "list"
+	MODE_LIST_SHORT         = "ls"
+	MODE_HELP_LONG          = "help"
+	MODE_HELP_SHORT         = "h"
+	MODE_SWITCH_LONG        = "switch"
+	MODE_SWITCH_SHORT       = "sw"
+	MODE_DELETE_LONG        = "delete"
+	MODE_DELETE_SHORT       = "del"
+	MODE_BATCH_DELETE_LONG  = "batch-delete"
+	MODE_BATCH_DELETE_SHORT = "bd"
 )
 
 func main() {
@@ -53,6 +55,8 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 		err = execution.BrowseAndSwitchBranches(gitClient)
 	case MODE_DELETE_LONG, MODE_DELETE_SHORT:
 		err = execution.ListAndDeleteBranch(gitClient)
+	case MODE_BATCH_DELETE_LONG, MODE_BATCH_DELETE_SHORT:
+		err = execution.ListAndDeleteBranches(gitClient)
 	default:
 		execution.PrintHelp(true)
 	}
