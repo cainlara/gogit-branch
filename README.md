@@ -55,6 +55,11 @@ mv gogit /usr/local/bin/
 go install github.com/cainlara/gogit-branch@latest
 ```
 
+### Check installation
+```bash
+gogit-branch
+```
+
 ---
 
 ## 📚 Usage
@@ -65,7 +70,7 @@ go install github.com/cainlara/gogit-branch@latest
 gogit-branch [command]
 ```
 
-If no command is provided, the tool defaults to listing all branches.
+If no command is provided, the tool defaults to show current version.
 
 ### Available Commands
 
@@ -75,9 +80,21 @@ If no command is provided, the tool defaults to listing all branches.
 | `switch` | `sw` | Interactively browse and switch to a different branch |
 | `delete` | `del` | Interactively select and delete a branch with confirmation |
 | `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
+| `version` | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
 ### Examples
+
+#### Show Current Version
+```bash
+gogit-branch version
+```
+
+**Output:**
+```
+Version: v1.0.0
+Built: 2026-01-28T19:54:08Z
+```
 
 #### List All Branches
 ```bash
