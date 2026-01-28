@@ -21,13 +21,15 @@ const (
 	MODE_DELETE_SHORT       = "del"
 	MODE_BATCH_DELETE_LONG  = "batch-delete"
 	MODE_BATCH_DELETE_SHORT = "bd"
+	MODE_VERSION_LONG       = "version"
+	MODE_VERSION_SHORT      = "v"
 )
 
 func main() {
 	gitClient := core.NewGitClient("")
 
 	if len(os.Args) < 2 {
-		execution.ListCurrentBranches(gitClient)
+		execution.PrintHelp(false, false)
 
 		return
 	}
@@ -39,7 +41,8 @@ func main() {
 
 func triggerExecution(args []string, gitClient *core.GitClient) {
 	if len(args) > 1 {
-		execution.PrintHelp(true)
+		execution.PrintHelp(true, true)
+		return
 	}
 
 	arg := args[0]
@@ -50,15 +53,17 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 	case MODE_LIST_LONG, MODE_LIST_SHORT:
 		err = execution.ListCurrentBranches(gitClient)
 	case MODE_HELP_LONG, MODE_HELP_SHORT:
-		execution.PrintHelp(false)
+		execution.PrintHelp(false, true)
 	case MODE_SWITCH_LONG, MODE_SWITCH_SHORT:
 		err = execution.BrowseAndSwitchBranches(gitClient)
 	case MODE_DELETE_LONG, MODE_DELETE_SHORT:
 		err = execution.ListAndDeleteBranch(gitClient)
 	case MODE_BATCH_DELETE_LONG, MODE_BATCH_DELETE_SHORT:
 		err = execution.ListAndDeleteBranches(gitClient)
+	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
+		execution.ShowVersion()
 	default:
-		execution.PrintHelp(true)
+		execution.PrintHelp(true, false)
 	}
 
 	if err != nil {
