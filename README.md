@@ -149,9 +149,9 @@ gogit-branch bd
 Deleting branches
 Select Target Branches (Press Space to select, Enter when done)
   Done
-💀 feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
-💀 bugfix-y (i7j8k9l)
-💀 old-feature (m1n2o3p)
+💀 [x] feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
+[ ] bugfix-y (i7j8k9l)
+[ ] old-feature (m1n2o3p)
 ```
 
 **Confirmation prompt after selection:**

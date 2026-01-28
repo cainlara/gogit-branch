@@ -27,7 +27,7 @@ func ListAndDeleteBranches(gitClient *core.GitClient) error {
 	doneBranch := model.NewDoneBranch("Done")
 	branches = append([]model.Branch{*doneBranch}, branches...)
 
-	selectedBranches, err := selectItems(0, branches, EMOJI_SKULL)
+	selectedBranches, err := listBranchesAndSelectMultipleTargets(0, branches, EMOJI_SKULL)
 	if err != nil {
 		return err
 	}
