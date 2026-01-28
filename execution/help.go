@@ -17,7 +17,7 @@ const banner = `                             ███   █████
  ███ ░███          ███ ░███                 
 ░░██████          ░░██████                 
  ░░░░░░            ░░░░░░                  
- v0.2.0`
+ v0.2.1`
 
 func PrintHelp(withError bool) {
 	fmt.Println()
