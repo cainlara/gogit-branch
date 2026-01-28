@@ -1,8 +1,9 @@
 package execution
 
 import (
-	"cainlara/gogit-branch/model"
 	"fmt"
+
+	"github.com/cainlara/gogit-branch/model"
 
 	"github.com/manifoldco/promptui"
 )

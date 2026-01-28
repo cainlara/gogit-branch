@@ -150,7 +150,7 @@ Deleting branches
 Select Target Branches (Press Space to select, Enter when done)
   Done
 💀 [x] feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
-[ ] bugfix-y (i7j8k9l)
+[x] bugfix-y (i7j8k9l)
 [ ] old-feature (m1n2o3p)
 ```
 
@@ -161,7 +161,7 @@ Confirm deletion of selected branches: feature-x (e4f5g6h), bugfix-y (i7j8k9l)
 ```
 
 > [!TIP]
-> Use the batch-delete command to efficiently clean up multiple branches at once. Press **Space** to toggle selection and **Enter** to proceed with deletion. Select "Done" when you've finished choosing branches.
+> Use the batch-delete command to efficiently clean up multiple branches at once. Press **Enter** to toggle selection. Select "Done" when you've finished choosing branches.
 
 ---
 
