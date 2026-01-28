@@ -52,7 +52,7 @@ mv gogit /usr/local/bin/
 ### Using Go Install
 
 ```bash
-go install cainlara/gogit-branch@latest
+go install github.com/cainlara/gogit-branch@latest
 ```
 
 ---
@@ -74,6 +74,7 @@ If no command is provided, the tool defaults to listing all branches.
 | `list` | `ls` | Display all branches in a formatted table with current branch indicator and commit hashes |
 | `switch` | `sw` | Interactively browse and switch to a different branch |
 | `delete` | `del` | Interactively select and delete a branch with confirmation |
+| `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
 | `help` | `h` | Display usage information and available commands |
 
 ### Examples
@@ -132,8 +133,8 @@ Select Target Branch
 💀 feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
   bugfix-y (i7j8k9l)
   Cancel Delete
-Are you sure you want to delete feature-x (e4f5g6h1234567890abcdef1234567890abcdef)? 
-[Type yes or y to continue or anything else to cancel]
+Are you sure you want to delete feature-x (e4f5g6h)? 
+[Type yes or y to continue or n to cancel]
 ```
 
 ---
