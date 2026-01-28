@@ -1,11 +1,12 @@
 package execution
 
 import (
-	"cainlara/gogit-branch/core"
-	"cainlara/gogit-branch/model"
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/cainlara/gogit-branch/core"
+	"github.com/cainlara/gogit-branch/model"
 
 	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"

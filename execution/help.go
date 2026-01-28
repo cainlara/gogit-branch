@@ -3,6 +3,7 @@ package execution
 import (
 	"fmt"
 
+	"github.com/cainlara/gogit-branch/version"
 	"github.com/fatih/color"
 )
 
@@ -17,7 +18,7 @@ const banner = `                             ███   █████
  ███ ░███          ███ ░███                 
 ░░██████          ░░██████                 
  ░░░░░░            ░░░░░░                  
- v0.2.1`
+`
 
 func PrintHelp(withError bool) {
 	fmt.Println()
@@ -26,7 +27,8 @@ func PrintHelp(withError bool) {
 		color.Red("This humble tool can't understand what you are trying to do.")
 		fmt.Println("Use 'help' (or 'h') argument to see the available commands.")
 	} else {
-		fmt.Println(banner)
+		fmt.Printf("%s%s\n", banner, version.Short())
+		fmt.Println("Built: ", version.Date)
 		fmt.Println()
 		color.Green("Usage:")
 		fmt.Println("list, ls:\t\tList all the branches in the current working directory.")
@@ -34,6 +36,7 @@ func PrintHelp(withError bool) {
 		fmt.Println("delete, del:\t\tList all the branches available to delete.")
 		fmt.Println("batch-delete, bd:\tList all the available branches, allowing you to select multiple branches to delete.")
 		fmt.Println("help, h:\t\tPrint this help.")
+		fmt.Println()
 	}
 
 	fmt.Println()

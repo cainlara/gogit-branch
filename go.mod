@@ -1,4 +1,4 @@
-module cainlara/gogit-branch
+module github.com/cainlara/gogit-branch
 
 go 1.22.2
 

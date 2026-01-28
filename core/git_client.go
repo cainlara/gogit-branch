@@ -1,10 +1,11 @@
 package core
 
 import (
-	"cainlara/gogit-branch/model"
 	"errors"
 	"os/exec"
 	"strings"
+
+	"github.com/cainlara/gogit-branch/model"
 )
 
 const (

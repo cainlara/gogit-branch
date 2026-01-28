@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"cainlara/gogit-branch/core"
-	"cainlara/gogit-branch/execution"
+	"github.com/cainlara/gogit-branch/core"
+	"github.com/cainlara/gogit-branch/execution"
 
 	"github.com/fatih/color"
 )
