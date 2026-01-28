@@ -137,6 +137,32 @@ Are you sure you want to delete feature-x (e4f5g6h)?
 [Type yes or y to continue or n to cancel]
 ```
 
+#### Batch Delete Branches
+```bash
+gogit-branch batch-delete
+# or
+gogit-branch bd
+```
+
+**Interactive multi-selection prompt:**
+```
+Deleting branches
+Select Target Branches (Press Space to select, Enter when done)
+  Done
+💀 [x] feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
+[ ] bugfix-y (i7j8k9l)
+[ ] old-feature (m1n2o3p)
+```
+
+**Confirmation prompt after selection:**
+```
+Confirm deletion of selected branches: feature-x (e4f5g6h), bugfix-y (i7j8k9l)
+[Type yes or y to continue or n to cancel]
+```
+
+> [!TIP]
+> Use the batch-delete command to efficiently clean up multiple branches at once. Press **Space** to toggle selection and **Enter** to proceed with deletion. Select "Done" when you've finished choosing branches.
+
 ---
 
 ## ⚠️ Important Warnings

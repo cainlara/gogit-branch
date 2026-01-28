@@ -37,6 +37,16 @@
             "args": [
                 "batch-delete"
             ]
+        },
+        {
+            "name": "Help",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "help"
+            ]
         }
     ]
 }

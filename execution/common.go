@@ -40,7 +40,7 @@ func listBranchesAndSelectTarget(options []model.Branch, icon string) (model.Bra
 	return selectedBranch, nil
 }
 
-func selectItems(selectedPos int, options []model.Branch, icon string) ([]model.Branch, error) {
+func listBranchesAndSelectMultipleTargets(selectedPos int, options []model.Branch, icon string) ([]model.Branch, error) {
 	activeCopy := fmt.Sprintf("%s [{{if .IsSelected}}x{{else}} {{end}}] {{ .GetName | cyan }} ({{if .IsDone}}Pick to finish selection{{else}}{{ .GetFullHash | red }}{{end}})", icon)
 	inactiveCopy := " [{{if .IsSelected}}x{{else}} {{end}}] {{ .GetName | cyan }} {{if .IsDummyBranch}}{{else}}({{ .GetShortHash | red }}){{end}}"
 
@@ -67,7 +67,7 @@ func selectItems(selectedPos int, options []model.Branch, icon string) ([]model.
 	if !options[selectionIdx].IsDone() {
 		options[selectionIdx].SetSelected(!options[selectionIdx].IsSelected())
 
-		return selectItems(selectionIdx, options, icon)
+		return listBranchesAndSelectMultipleTargets(selectionIdx, options, icon)
 	}
 
 	var selectedBranches []model.Branch
