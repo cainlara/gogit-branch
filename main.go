@@ -21,6 +21,8 @@ const (
 	MODE_DELETE_SHORT       = "del"
 	MODE_BATCH_DELETE_LONG  = "batch-delete"
 	MODE_BATCH_DELETE_SHORT = "bd"
+	MODE_CREATE_LONG        = "create"
+	MODE_CREATE_SHORT       = "c"
 	MODE_VERSION_LONG       = "version"
 	MODE_VERSION_SHORT      = "v"
 )
@@ -60,6 +62,8 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 		err = execution.ListAndDeleteBranch(gitClient)
 	case MODE_BATCH_DELETE_LONG, MODE_BATCH_DELETE_SHORT:
 		err = execution.ListAndDeleteBranches(gitClient)
+	case MODE_CREATE_LONG, MODE_CREATE_SHORT:
+		err = execution.CreateAndSwitchBranch(gitClient)
 	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
 		execution.ShowVersion()
 	default:

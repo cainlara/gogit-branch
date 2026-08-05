@@ -24,6 +24,7 @@ func PrintHelp(withError, withUsage bool) {
 			fmt.Println("switch, sw:\t\tList all the branches available to switch.")
 			fmt.Println("delete, del:\t\tList all the branches available to delete.")
 			fmt.Println("batch-delete, bd:\tList all the available branches, allowing you to select multiple branches to delete.")
+			fmt.Println("create, c:\t\tCreate a new branch and switch to it.")
 			fmt.Println("version, v:\t\tShow the version of this humble tool.")
 			fmt.Println("help, h:\t\tShow this help.")
 		}
