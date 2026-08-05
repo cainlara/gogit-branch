@@ -80,6 +80,7 @@ If no command is provided, the tool defaults to show current version.
 | `switch` | `sw` | Interactively browse and switch to a different branch |
 | `delete` | `del` | Interactively select and delete a branch with confirmation |
 | `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
+| `create` | `c` | Create a new branch and switch to it |
 | `version` | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
@@ -179,6 +180,23 @@ Confirm deletion of selected branches: feature-x (e4f5g6h), bugfix-y (i7j8k9l)
 
 > [!TIP]
 > Use the batch-delete command to efficiently clean up multiple branches at once. Press **Enter** to toggle selection. Select "Done" when you've finished choosing branches.
+
+#### Create a New Branch
+```bash
+gogit-branch create
+# or
+gogit-branch c
+```
+
+**Interactive prompt:**
+```
+Creating branch
+✔ Branch name: feature-x
+🌿 Created and switched to feature-x
+```
+
+If a branch with that name already exists, `create` reports the conflict and leaves your
+repository untouched — use `switch` to move to an existing branch instead.
 
 ---
 

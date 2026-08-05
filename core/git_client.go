@@ -11,6 +11,7 @@ import (
 const (
 	CURRENT_BRANCH_PREFIX = "* "
 	OUTPUT_ERROR_PREFIX   = "error:"
+	OUTPUT_FATAL_PREFIX   = "fatal:"
 )
 
 type GitClient struct {
@@ -110,6 +111,21 @@ func (g *GitClient) Checkout(branch model.Branch) error {
 		output := string(out)
 
 		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (g *GitClient) CreateAndSwitchBranch(branchName string) error {
+	out, err := g.runGitCommandCombinedOutput("checkout", "-b", branchName)
+	if err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) || strings.HasPrefix(output, OUTPUT_FATAL_PREFIX) {
 			return errors.New(output)
 		}
 
