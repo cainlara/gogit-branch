@@ -80,7 +80,7 @@ If no command is provided, the tool defaults to show current version.
 | `switch` | `sw` | Interactively browse and switch to a different branch |
 | `delete` | `del` | Interactively select and delete a branch with confirmation |
 | `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
-| `create` | `c` | Create a new branch and switch to it |
+| `create` | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
 | `version` | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
@@ -195,8 +195,24 @@ Creating branch
 🌿 Created and switched to feature-x
 ```
 
-If a branch with that name already exists, `create` reports the conflict and leaves your
-repository untouched — use `switch` to move to an existing branch instead.
+You can also pass the branch name directly to skip the prompt entirely:
+```bash
+gogit-branch create feature-x
+# or
+gogit-branch c feature-x
+```
+
+**Output:**
+```
+Creating branch
+🌿 Created and switched to feature-x
+```
+
+When passed as an argument, the name is trimmed of surrounding whitespace and rejected (with
+a clear error) if it is empty or starts with a dash; the interactive prompt is unaffected by
+this validation. Either way, if a branch with that name already exists, `create` reports the
+conflict and leaves your repository untouched — use `switch` to move to an existing branch
+instead.
 
 ---
 

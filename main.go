@@ -42,12 +42,15 @@ func main() {
 }
 
 func triggerExecution(args []string, gitClient *core.GitClient) {
-	if len(args) > 1 {
+	arg := args[0]
+	isCreate := arg == MODE_CREATE_LONG || arg == MODE_CREATE_SHORT
+
+	// The create/c subcommand accepts one optional extra argument (the branch
+	// name); every other subcommand keeps rejecting any extra argument.
+	if len(args) > 2 || (len(args) == 2 && !isCreate) {
 		execution.PrintHelp(true, true)
 		return
 	}
-
-	arg := args[0]
 
 	var err error
 
@@ -63,7 +66,11 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 	case MODE_BATCH_DELETE_LONG, MODE_BATCH_DELETE_SHORT:
 		err = execution.ListAndDeleteBranches(gitClient)
 	case MODE_CREATE_LONG, MODE_CREATE_SHORT:
-		err = execution.CreateAndSwitchBranch(gitClient)
+		var name *string
+		if len(args) == 2 {
+			name = &args[1]
+		}
+		err = execution.CreateAndSwitchBranch(gitClient, name)
 	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
 		execution.ShowVersion()
 	default:
