@@ -133,12 +133,11 @@ func printUntrackedFiles(status *model.RepositoryStatus) {
 	}
 }
 
-// printOptions renders the third section: the three fixed actions (FR-005).
+// printOptions renders the third section: the three fixed actions (FR-005),
+// on a single line for at-a-glance scanning.
 func printOptions() {
 	color.Cyan("Options")
-	fmt.Println("  1 (c)ommit all tracked files")
-	fmt.Println("  2 (a)dd untracked files and the commit all")
-	fmt.Println("  3 (e)xit")
+	fmt.Println("  1 (c)ommit all tracked files  |  2 (a)dd untracked files and then commit all  |  3 (e)xit")
 }
 
 // promptForCommitMessage asks the user for a commit message and trims
