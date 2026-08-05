@@ -81,6 +81,7 @@ If no command is provided, the tool defaults to show current version.
 | `delete` | `del` | Interactively select and delete a branch with confirmation |
 | `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
 | `create` | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
+| `status` | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
 | `version` | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
@@ -213,6 +214,45 @@ a clear error) if it is empty or starts with a dash; the interactive prompt is u
 this validation. Either way, if a branch with that name already exists, `create` reports the
 conflict and leaves your repository untouched — use `switch` to move to an existing branch
 instead.
+
+#### View and Act on Repository Status
+```bash
+gogit-branch status
+# or
+gogit-branch st
+```
+
+**Output:**
+```
+On branch main (tracking origin/main, ahead 1)
+
+Tracked files
+  tracked1.txt (modified) [staged + unstaged]
+  tracked2.txt (deleted) [unstaged]
+
+Untracked files
+  untracked.txt
+
+Options
+  1 (c)ommit all tracked files
+  2 (a)dd untracked files and the commit all
+  3 (e)xit
+```
+
+This mirrors everything a plain `git status` would tell you — current branch (or detached-HEAD
+state), upstream tracking/ahead-behind counts, and every tracked file colored by its status
+(modified, deleted, new, or other), with an annotation when a file has both a staged and an
+unstaged change — plus untracked files in their own distinct color. Nothing is left out.
+
+Press a single key to act, no Enter required:
+- **`c`** — prompts for a commit message and commits all tracked changes
+- **`a`** — prompts for a commit message, stages every tracked and untracked change, and
+  commits everything together
+- **`e`** — exits immediately with no changes
+- Any other key is ignored
+
+A commit message is required for both `c` and `a`; an empty (or whitespace-only) message is
+rejected with a clear error and nothing is committed — for `a`, nothing is staged either.
 
 ---
 

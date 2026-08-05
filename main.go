@@ -23,6 +23,8 @@ const (
 	MODE_BATCH_DELETE_SHORT = "bd"
 	MODE_CREATE_LONG        = "create"
 	MODE_CREATE_SHORT       = "c"
+	MODE_STATUS_LONG        = "status"
+	MODE_STATUS_SHORT       = "st"
 	MODE_VERSION_LONG       = "version"
 	MODE_VERSION_SHORT      = "v"
 )
@@ -71,6 +73,8 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 			name = &args[1]
 		}
 		err = execution.CreateAndSwitchBranch(gitClient, name)
+	case MODE_STATUS_LONG, MODE_STATUS_SHORT:
+		err = execution.ShowStatusAndOperate(gitClient)
 	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
 		execution.ShowVersion()
 	default:

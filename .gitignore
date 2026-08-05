@@ -51,3 +51,7 @@ CHANGELOG.md
 
 # Local build output (see scripts/build.sh / README)
 /gogit-branch
+/gogit
+
+# Speckit artifacts
+specs**
