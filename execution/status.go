@@ -18,7 +18,19 @@ const (
 	KEY_COMMIT = 'c'
 	KEY_ADD    = 'a'
 	KEY_EXIT   = 'e'
+
+	STATUS_TAB_WIDTH = 8
 )
+
+// renderRow is one tracked or untracked file's plain-text rendering
+// ingredients, built before any tab-padding or coloring is applied (see
+// data-model.md's renderRow entity).
+type renderRow struct {
+	label      string
+	filename   string
+	annotation string
+	colorer    *color.Color
+}
 
 // readKeyPress puts stdin into raw mode, reads exactly one byte with no
 // Enter required, restores the terminal, and returns the byte read.
@@ -57,9 +69,65 @@ func untrackedColor() *color.Color {
 	return color.New(color.FgCyan)
 }
 
+// upstreamColor renders the "has upstream" indicator, distinct from every
+// other color used on this screen (research.md).
+func upstreamColor() *color.Color {
+	return color.New(color.FgBlue)
+}
+
+// noUpstreamColor renders the "no upstream" indicator, distinct from
+// upstreamColor and from every other color used on this screen (research.md).
+func noUpstreamColor() *color.Color {
+	return color.New(color.FgHiBlack)
+}
+
+// nextTabStop returns the smallest multiple of tabWidth strictly greater
+// than column — i.e. where a single tab character would land the cursor
+// if it currently sits at column.
+func nextTabStop(column, tabWidth int) int {
+	return (column/tabWidth + 1) * tabWidth
+}
+
+// targetColumn returns the shared column every row's file name should
+// start at: the smallest multiple of tabWidth strictly greater than the
+// longest indent+label prefix across every row. Returns 0 for an empty
+// slice (nothing to align).
+func targetColumn(rows []renderRow, indent, tabWidth int) int {
+	maxPrefix := 0
+
+	for _, row := range rows {
+		prefix := indent + len(row.label)
+
+		if prefix > maxPrefix {
+			maxPrefix = prefix
+		}
+	}
+
+	if maxPrefix == 0 {
+		return 0
+	}
+
+	return nextTabStop(maxPrefix, tabWidth)
+}
+
+// padding returns exactly as many tab characters as are needed to advance
+// from prefixLen to target, per research.md's two-pass alignment decision.
+func padding(prefixLen, target, tabWidth int) string {
+	tabs := ""
+
+	for pos := prefixLen; pos < target; pos = nextTabStop(pos, tabWidth) {
+		tabs += "\t"
+	}
+
+	return tabs
+}
+
 // printBranchInfo renders the current branch (or detached-HEAD indicator)
-// plus any upstream tracking/ahead-behind counts, exactly mirroring what
-// `git status` itself would report (FR-004).
+// plus an explicit, colored upstream-tracking indicator: blue with the
+// tracked remote (and any ahead/behind counts) when one is configured, or
+// gray stating that none is set when it isn't (FR-006 through FR-010).
+// Detached HEAD is unaffected — there is no branch for either state to
+// describe.
 func printBranchInfo(status *model.RepositoryStatus) {
 	if status.IsDetached() {
 		fmt.Printf("On %s\n", status.GetBranch())
@@ -67,69 +135,96 @@ func printBranchInfo(status *model.RepositoryStatus) {
 		return
 	}
 
-	line := fmt.Sprintf("On branch %s", status.GetBranch())
+	fmt.Printf("On branch %s ", status.GetBranch())
 
-	if status.GetUpstream() != "" {
-		line += fmt.Sprintf(" (tracking %s", status.GetUpstream())
-
-		if status.GetAhead() > 0 || status.GetBehind() > 0 {
-			line += ", "
-
-			if status.GetAhead() > 0 {
-				line += "ahead " + strconv.Itoa(status.GetAhead())
-			}
-
-			if status.GetAhead() > 0 && status.GetBehind() > 0 {
-				line += ", "
-			}
-
-			if status.GetBehind() > 0 {
-				line += "behind " + strconv.Itoa(status.GetBehind())
-			}
-		}
-
-		line += ")"
-	}
-
-	fmt.Println(line)
-}
-
-// printTrackedFiles renders the tracked-files section: one line per file,
-// colored by its primary status category, annotated when it has both a
-// staged and an unstaged change (FR-002, FR-004).
-func printTrackedFiles(status *model.RepositoryStatus) {
-	color.Cyan("Tracked files")
-
-	if !status.HasTrackedChanges() {
-		fmt.Println("  (nothing to show)")
+	if status.GetUpstream() == "" {
+		fmt.Println(noUpstreamColor().Sprint("(no remote upstream set)"))
 
 		return
 	}
+
+	segment := fmt.Sprintf("(tracking %s", status.GetUpstream())
+
+	if status.GetAhead() > 0 || status.GetBehind() > 0 {
+		segment += ", "
+
+		if status.GetAhead() > 0 {
+			segment += "ahead " + strconv.Itoa(status.GetAhead())
+		}
+
+		if status.GetAhead() > 0 && status.GetBehind() > 0 {
+			segment += ", "
+		}
+
+		if status.GetBehind() > 0 {
+			segment += "behind " + strconv.Itoa(status.GetBehind())
+		}
+	}
+
+	segment += ")"
+
+	fmt.Println(upstreamColor().Sprint(segment))
+}
+
+// buildTrackedRows converts each tracked file into a renderRow, labeling it
+// by its primary status category and preserving its staged/unstaged
+// annotation (FR-004 mirror target for buildUntrackedRows).
+func buildTrackedRows(status *model.RepositoryStatus) []renderRow {
+	rows := make([]renderRow, 0, len(status.GetTracked()))
 
 	for _, file := range status.GetTracked() {
-		line := categoryColor(file.Category()).Sprintf("  %s (%s)", file.GetPath(), file.Category())
-
-		if annotation := file.StateAnnotation(); annotation != "" {
-			line += fmt.Sprintf(" [%s]", annotation)
-		}
-
-		fmt.Println(line)
+		rows = append(rows, renderRow{
+			label:      fmt.Sprintf("(%s)", file.Category()),
+			filename:   file.GetPath(),
+			annotation: file.StateAnnotation(),
+			colorer:    categoryColor(file.Category()),
+		})
 	}
+
+	return rows
 }
 
-// printUntrackedFiles renders the untracked-files section, all in one color
-// distinct from every tracked-file category color (FR-003).
-func printUntrackedFiles(status *model.RepositoryStatus) {
-	color.Cyan("Untracked files")
+// buildUntrackedRows converts each untracked path into a renderRow with an
+// explicit "(untracked)" label, mirroring the tracked-file labels (FR-004).
+func buildUntrackedRows(status *model.RepositoryStatus) []renderRow {
+	rows := make([]renderRow, 0, len(status.GetUntracked()))
 
-	if !status.HasUntrackedFiles() {
+	for _, path := range status.GetUntracked() {
+		rows = append(rows, renderRow{
+			label:    "(untracked)",
+			filename: path,
+			colorer:  untrackedColor(),
+		})
+	}
+
+	return rows
+}
+
+// printFileSection renders one section's header followed by its rows, each
+// tab-aligned to the shared target column computed across both sections
+// (FR-001, FR-002, FR-003), or the existing "(nothing to show)" placeholder
+// when there are no rows. The plain-text line is fully assembled before a
+// single color wrap is applied, so ANSI codes never affect the tab-count
+// computation (research.md).
+func printFileSection(header string, rows []renderRow, indent, target int) {
+	color.Cyan(header)
+
+	if len(rows) == 0 {
 		fmt.Println("  (nothing to show)")
 
 		return
 	}
 
-	for _, path := range status.GetUntracked() {
-		fmt.Println(untrackedColor().Sprintf("  %s", path))
+	prefix := strings.Repeat(" ", indent)
+
+	for _, row := range rows {
+		line := prefix + row.label + padding(indent+len(row.label), target, STATUS_TAB_WIDTH) + row.filename
+
+		if row.annotation != "" {
+			line += fmt.Sprintf(" [%s]", row.annotation)
+		}
+
+		fmt.Println(row.colorer.Sprint(line))
 	}
 }
 
@@ -225,11 +320,15 @@ func ShowStatusAndOperate(gitClient *core.GitClient) error {
 		return err
 	}
 
+	trackedRows := buildTrackedRows(status)
+	untrackedRows := buildUntrackedRows(status)
+	target := targetColumn(append(append([]renderRow{}, trackedRows...), untrackedRows...), 2, STATUS_TAB_WIDTH)
+
 	printBranchInfo(status)
 	fmt.Println()
-	printTrackedFiles(status)
+	printFileSection("Tracked files", trackedRows, 2, target)
 	fmt.Println()
-	printUntrackedFiles(status)
+	printFileSection("Untracked files", untrackedRows, 2, target)
 	fmt.Println()
 	printOptions()
 
