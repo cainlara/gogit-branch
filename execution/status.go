@@ -330,6 +330,11 @@ func ShowStatusAndOperate(gitClient *core.GitClient) error {
 	fmt.Println()
 	printFileSection("Untracked files", untrackedRows, 2, target)
 	fmt.Println()
+
+	if !status.HasTrackedChanges() && !status.HasUntrackedFiles() {
+		return nil
+	}
+
 	printOptions()
 
 	for {
