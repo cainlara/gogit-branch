@@ -25,6 +25,8 @@ const (
 	MODE_CREATE_SHORT       = "c"
 	MODE_STATUS_LONG        = "status"
 	MODE_STATUS_SHORT       = "st"
+	MODE_PUSH_LONG          = "push"
+	MODE_PUSH_SHORT         = "p"
 	MODE_VERSION_LONG       = "version"
 	MODE_VERSION_SHORT      = "v"
 )
@@ -75,6 +77,8 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 		err = execution.CreateAndSwitchBranch(gitClient, name)
 	case MODE_STATUS_LONG, MODE_STATUS_SHORT:
 		err = execution.ShowStatusAndOperate(gitClient)
+	case MODE_PUSH_LONG, MODE_PUSH_SHORT:
+		err = execution.PushCurrentBranch(gitClient)
 	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
 		execution.ShowVersion()
 	default:

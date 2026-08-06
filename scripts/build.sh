@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PKG="github.com/cainlara/gogit-branch/version"
-OUT="${1:-gogit-branch}"
+OUT="${1:-gogit}"
 
 VERSION="$(git describe --tags --exact-match 2>/dev/null || true)"
 if [[ -z "${VERSION}" ]]; then

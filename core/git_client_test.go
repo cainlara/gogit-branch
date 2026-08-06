@@ -91,3 +91,40 @@ func TestParseStatusBranchLine(t *testing.T) {
 		})
 	}
 }
+
+func TestHasNoUpstreamBranchError(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		want   bool
+	}{
+		{
+			name:   "no upstream branch message",
+			output: "fatal: The current branch quickstart-demo has no upstream branch.\nTo push the current branch and set the remote as upstream, use\n\n    git push --set-upstream origin quickstart-demo\n",
+			want:   true,
+		},
+		{
+			name:   "unrelated fatal message",
+			output: "fatal: 'origin' does not appear to be a git repository\n",
+			want:   false,
+		},
+		{
+			name:   "rejected push message",
+			output: "To /tmp/scratch-remote.git\n ! [rejected]        brand-new -> brand-new (fetch first)\nerror: failed to push some refs to '/tmp/scratch-remote.git'\n",
+			want:   false,
+		},
+		{
+			name:   "empty output",
+			output: "",
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasNoUpstreamBranchError(tt.output); got != tt.want {
+				t.Errorf("hasNoUpstreamBranchError(%q) = %v, want %v", tt.output, got, tt.want)
+			}
+		})
+	}
+}

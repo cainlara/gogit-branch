@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	EMOJI_HERB  = "\U0001F33F"
-	EMOJI_SKULL = "\U0001F480"
-	BANNER      = `                             ███   █████   
+	EMOJI_HERB   = "\U0001F33F"
+	EMOJI_SKULL  = "\U0001F480"
+	EMOJI_ROCKET = "\U0001F680"
+	BANNER       = `                             ███   █████   
                             ░░░   ░░███    
   ███████  ██████   ███████ ████  ███████  
  ███░░███ ███░░███ ███░░███░░███ ░░░███░   
