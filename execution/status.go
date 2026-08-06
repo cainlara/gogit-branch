@@ -137,7 +137,7 @@ func printUntrackedFiles(status *model.RepositoryStatus) {
 // on a single line for at-a-glance scanning.
 func printOptions() {
 	color.Cyan("Options")
-	fmt.Println("  1 (c)ommit all tracked files  |  2 (a)dd untracked files and then commit all  |  3 (e)xit")
+	fmt.Println("  (c)ommit all tracked files  |  (a)dd untracked files and then commit all  |  (e)xit")
 }
 
 // promptForCommitMessage asks the user for a commit message and trims

@@ -17,6 +17,8 @@ const (
 	STATUS_BRANCH_LINE_PREFIX = "## "
 	STATUS_DETACHED_HEAD      = "HEAD (no branch)"
 	STATUS_UNTRACKED_PREFIX   = "??"
+
+	NO_UPSTREAM_BRANCH_MARKER = "has no upstream branch"
 )
 
 type GitClient struct {
@@ -313,4 +315,59 @@ func (g *GitClient) AddAllAndCommit(message string) error {
 	}
 
 	return nil
+}
+
+// Push runs `git push` for the current branch. If that fails specifically
+// because the current branch has no upstream configured yet, it resolves
+// the current branch name and retries once as
+// `git push --set-upstream origin <branch>`, so a brand-new local branch
+// publishes in a single call instead of surfacing the "no upstream branch"
+// error. Any other failure (no remote, non-fast-forward rejection,
+// detached HEAD, etc.) is returned as-is, with no retry and no force-push.
+func (g *GitClient) Push() error {
+	out, err := g.runGitCommandCombinedOutput("push")
+	if err == nil {
+		return nil
+	}
+
+	output := string(out)
+
+	if !hasNoUpstreamBranchError(output) {
+		return pushError(output, err)
+	}
+
+	branchOut, err := g.runGitCommand("rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return err
+	}
+
+	branchName := strings.TrimSpace(string(branchOut))
+
+	out, err = g.runGitCommandCombinedOutput("push", "--set-upstream", "origin", branchName)
+	if err != nil {
+		return pushError(string(out), err)
+	}
+
+	return nil
+}
+
+// hasNoUpstreamBranchError reports whether a failed `git push`'s combined
+// output matches git's stable "has no upstream branch" message — the one
+// specific failure Push retries with --set-upstream. Every other failure
+// is left untouched.
+func hasNoUpstreamBranchError(output string) bool {
+	return strings.Contains(output, NO_UPSTREAM_BRANCH_MARKER)
+}
+
+// pushError turns a failed push's combined output into an error carrying
+// git's own message. Unlike the other GitClient commands, a rejected
+// `git push`'s output can start with a "To <remote>" progress line before
+// the error:/fatal: line, so this checks for the marker anywhere in the
+// output rather than only as a prefix.
+func pushError(output string, err error) error {
+	if strings.Contains(output, OUTPUT_ERROR_PREFIX) || strings.Contains(output, OUTPUT_FATAL_PREFIX) {
+		return errors.New(output)
+	}
+
+	return err
 }

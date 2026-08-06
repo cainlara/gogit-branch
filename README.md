@@ -82,6 +82,7 @@ If no command is provided, the tool defaults to show current version.
 | `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
 | `create` | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
 | `status` | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
+| `push` | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
 | `version` | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
@@ -234,9 +235,7 @@ Untracked files
   untracked.txt
 
 Options
-  1 (c)ommit all tracked files
-  2 (a)dd untracked files and the commit all
-  3 (e)xit
+    (c)ommit all tracked files  |  (a)dd untracked files and then commit all  |  (e)xit
 ```
 
 This mirrors everything a plain `git status` would tell you — current branch (or detached-HEAD
@@ -253,6 +252,25 @@ Press a single key to act, no Enter required:
 
 A commit message is required for both `c` and `a`; an empty (or whitespace-only) message is
 rejected with a clear error and nothing is committed — for `a`, nothing is staged either.
+
+#### Push the Current Branch
+```bash
+gogit-branch push
+# or
+gogit-branch p
+```
+
+**Output (branch already tracked):**
+```
+Pushing branch
+🚀 Pushed current branch to the remote
+```
+
+If the current branch has no upstream configured yet (e.g. it was just created), `push`
+automatically sets it — equivalent to `git push --set-upstream origin <branch>` — before
+publishing, so you never see git's "no upstream branch" error. Any other failure (no remote
+configured, a rejected/diverged push, detached HEAD, etc.) is surfaced exactly as git reports
+it; `push` never force-pushes or otherwise bypasses git's own safety checks.
 
 ---
 

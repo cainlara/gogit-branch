@@ -26,6 +26,7 @@ func PrintHelp(withError, withUsage bool) {
 			fmt.Println("batch-delete, bd:\tList all the available branches, allowing you to select multiple branches to delete.")
 			fmt.Println("create, c:\t\tCreate a new branch and switch to it.")
 			fmt.Println("status, st:\t\tShow the repository status and commit tracked/untracked changes.")
+			fmt.Println("push, p:\t\tPush the current branch, setting the upstream first if needed.")
 			fmt.Println("version, v:\t\tShow the version of this humble tool.")
 			fmt.Println("help, h:\t\tShow this help.")
 		}
