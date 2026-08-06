@@ -9,7 +9,6 @@ import (
 	"github.com/cainlara/gogit-branch/model"
 
 	"github.com/fatih/color"
-	"github.com/manifoldco/promptui"
 )
 
 func ListAndDeleteBranches(gitClient *core.GitClient) error {
@@ -44,20 +43,34 @@ func ListAndDeleteBranches(gitClient *core.GitClient) error {
 	return nil
 }
 
+// maxConfirmBranchNames bounds how many selected branch names are shown in
+// the batch-delete confirmation label, regardless of how many were actually
+// selected — an unbounded, data-driven label can grow arbitrarily long and
+// wrap unpredictably across the terminal's width (FR-007).
+const maxConfirmBranchNames = 5
+
+// summarizeBranchNamesForConfirm joins names for display in the
+// batch-delete confirmation label, capping the shown names at
+// maxConfirmBranchNames and appending an "and N more" suffix when more were
+// selected. The full selection is still passed to gitClient.DeleteBranches
+// regardless of how many names appear here.
+func summarizeBranchNamesForConfirm(names []string) string {
+	if len(names) <= maxConfirmBranchNames {
+		return strings.Join(names, ", ")
+	}
+
+	shown := strings.Join(names[:maxConfirmBranchNames], ", ")
+
+	return fmt.Sprintf("%s, and %d more", shown, len(names)-maxConfirmBranchNames)
+}
+
 func confirmDeleteSelectedBranches(selectedBranches []model.Branch) bool {
 	branchNames := make([]string, 0, len(selectedBranches))
 	for _, branch := range selectedBranches {
 		branchNames = append(branchNames, branch.String())
 	}
 
-	confirmMessage := fmt.Sprintf("Confirm deletion of selected branches: %s", strings.Join(branchNames, ", "))
+	label := fmt.Sprintf("Confirm deletion of selected branches: %s", summarizeBranchNamesForConfirm(branchNames))
 
-	prompt := promptui.Prompt{
-		Label:     confirmMessage,
-		IsConfirm: true,
-	}
-
-	result, _ := prompt.Run()
-
-	return result == "yes" || result == "y"
+	return confirmYesNo(label)
 }

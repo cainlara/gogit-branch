@@ -2,9 +2,11 @@ package execution
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cainlara/gogit-branch/model"
 
+	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
 )
 
@@ -25,6 +27,39 @@ const (
  ░░░░░░            ░░░░░░                  
 `
 )
+
+// isAffirmativeAnswer reports whether raw, normalized case-insensitively and
+// trimmed of incidental surrounding whitespace, is exactly "y" or "yes"
+// (FR-002, FR-003). Anything else is a decline (FR-004) — both outcomes are
+// two branches of this same single comparison, not independent checks.
+func isAffirmativeAnswer(raw string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(raw))
+
+	return normalized == "y" || normalized == "yes"
+}
+
+// confirmYesNo runs a freeform (non-IsConfirm) prompt and decides
+// accept/decline itself via isAffirmativeAnswer, so the rendered outcome and
+// the actual decision can never disagree the way promptui's own IsConfirm
+// mode does (its built-in check only ever treats an exact "y" as accepted,
+// silently rendering "yes" as rejected even though this tool treats it as
+// accepted too). On acceptance, an explicit confirmation line is printed;
+// on decline, nothing is printed here — each caller keeps its own distinct
+// abort message (FR-006).
+func confirmYesNo(label string) bool {
+	prompt := promptui.Prompt{
+		Label: label,
+	}
+
+	result, _ := prompt.Run()
+
+	accepted := isAffirmativeAnswer(result)
+	if accepted {
+		color.Green("\nConfirmed")
+	}
+
+	return accepted
+}
 
 func listBranchesAndSelectTarget(options []model.Branch, icon string) (model.Branch, error) {
 	activeCopy := fmt.Sprintf("%s {{ .GetName | cyan }} {{if .IsDummyBranch}} Pick To Abort {{else}}({{ .GetFullHash | red }}){{end}}", icon)

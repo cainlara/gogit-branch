@@ -6,7 +6,6 @@ import (
 	"github.com/cainlara/gogit-branch/core"
 
 	"github.com/fatih/color"
-	"github.com/manifoldco/promptui"
 )
 
 // validateResetFlag reports whether raw is exactly "--hard", rejecting any
@@ -29,14 +28,9 @@ func confirmReset(removeUntracked bool) bool {
 		message = "This cannot be undone: uncommitted changes AND untracked files will be lost"
 	}
 
-	prompt := promptui.Prompt{
-		Label:     fmt.Sprintf("%s. Are you sure you want to continue [Type yes or y to continue or n to cancel]?", message),
-		IsConfirm: true,
-	}
+	label := fmt.Sprintf("%s. Are you sure you want to continue [Type yes or y to continue or n to cancel]?", message)
 
-	result, _ := prompt.Run()
-
-	return result == "yes" || result == "y"
+	return confirmYesNo(label)
 }
 
 // ResetToLatestCommit reverts the working tree to the current branch's

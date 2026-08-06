@@ -8,7 +8,6 @@ import (
 	"github.com/cainlara/gogit-branch/model"
 
 	"github.com/fatih/color"
-	"github.com/manifoldco/promptui"
 )
 
 func ListAndDeleteBranch(gitClient *core.GitClient) error {
@@ -46,12 +45,7 @@ func ListAndDeleteBranch(gitClient *core.GitClient) error {
 }
 
 func confirmDeleteSelectedBranch(branch model.Branch) bool {
-	prompt := promptui.Prompt{
-		Label:     fmt.Sprintf("Are you sure you want to delete %s (%s) [Type yes or y to continue or n to cancel]?", branch.GetName(), branch.GetShortHash()),
-		IsConfirm: true,
-	}
+	label := fmt.Sprintf("Are you sure you want to delete %s (%s) [Type yes or y to continue or n to cancel]?", branch.GetName(), branch.GetShortHash())
 
-	result, _ := prompt.Run()
-
-	return result == "yes" || result == "y"
+	return confirmYesNo(label)
 }
