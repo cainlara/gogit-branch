@@ -20,16 +20,17 @@ func PrintHelp(withError, withUsage bool) {
 		if withUsage {
 			fmt.Println()
 			color.Green("Usage:")
-			fmt.Println("list, ls:\t\tList all the branches in the current working directory.")
-			fmt.Println("switch, sw:\t\tList all the branches available to switch.")
-			fmt.Println("delete, del:\t\tList all the branches available to delete.")
 			fmt.Println("batch-delete, bd:\tList all the available branches, allowing you to select multiple branches to delete.")
 			fmt.Println("create, c:\t\tCreate a new branch and switch to it.")
-			fmt.Println("status, st:\t\tShow the repository status and commit tracked/untracked changes.")
-			fmt.Println("push, p:\t\tPush the current branch, setting the upstream first if needed.")
-			fmt.Println("log, l:\t\tShow recent commit history, defaulting to the last 20 entries.")
-			fmt.Println("version, v:\t\tShow the version of this humble tool.")
+			fmt.Println("delete, del:\t\tList all the branches available to delete.")
 			fmt.Println("help, h:\t\tShow this help.")
+			fmt.Println("list, ls:\t\tList all the branches in the current working directory.")
+			fmt.Println("log, l:\t\tShow recent commit history, defaulting to the last 20 entries.")
+			fmt.Println("push, p:\t\tPush the current branch, setting the upstream first if needed.")
+			fmt.Println("reset, r:\t\tDANGER: irreversibly discard all uncommitted changes (add --hard to also remove untracked files).")
+			fmt.Println("status, st:\t\tShow the repository status and commit tracked/untracked changes.")
+			fmt.Println("switch, sw:\t\tList all the branches available to switch.")
+			fmt.Println("version, v:\t\tShow the version of this humble tool.")
 		}
 	}
 

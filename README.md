@@ -86,16 +86,17 @@ If no command is provided, the tool defaults to show current version.
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| [`list`](#list-all-branches) | `ls` | Display all branches in a formatted table with current branch indicator and commit hashes |
-| [`switch`](#switch-branches) | `sw` | Interactively browse and switch to a different branch |
-| [`delete`](#delete-a-branch) | `del` | Interactively select and delete a branch with confirmation |
 | [`batch-delete`](#batch-delete-branches) | `bd` | Interactively select and delete multiple branches with confirmation |
 | [`create`](#create-a-new-branch) | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
-| [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
-| [`push`](#push-the-current-branch) | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
-| [`log`](#view-recent-commit-history) | `l` | Show recent commit history in a compact, colorized one-line-per-commit format (optionally pass a limit) |
-| [`version`](#show-current-version) | `v` | Show the version of this humble tool. |
+| [`delete`](#delete-a-branch) | `del` | Interactively select and delete a branch with confirmation |
 | `help` | `h` | Display usage information and available commands |
+| [`list`](#list-all-branches) | `ls` | Display all branches in a formatted table with current branch indicator and commit hashes |
+| [`log`](#view-recent-commit-history) | `l` | Show recent commit history in a compact, colorized one-line-per-commit format (optionally pass a limit) |
+| [`push`](#push-the-current-branch) | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
+| [`reset`](#discard-local-changes) | `r` | **DANGER**: irreversibly discard uncommitted changes (add `--hard` to also remove untracked files) |
+| [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
+| [`switch`](#switch-branches) | `sw` | Interactively browse and switch to a different branch |
+| [`version`](#show-current-version) | `v` | Show the version of this humble tool. |
 
 ### Examples
 
@@ -316,6 +317,38 @@ trailing note is shown. Only a positive whole number is accepted — anything el
 decimal, zero, or a negative number) is rejected with a clear error before any git command
 runs.
 
+#### Discard Local Changes
+```bash
+gogit reset
+# or
+gogit r
+```
+
+**Interactive prompt with confirmation:**
+```
+✔ This cannot be undone: uncommitted changes will be lost. Are you sure you want to continue [Type yes or y to continue or n to cancel]? yes
+🌿 Reverted tracked changes to the latest commit
+```
+
+> [!CAUTION]
+> **This action cannot be undone.** `reset` discards all uncommitted tracked changes (staged
+> and unstaged), reverting your working tree to exactly match the current branch's latest
+> commit. Untracked files are left alone.
+
+Add `--hard` to also remove every untracked file (anything never added to git), so the working
+tree ends up byte-for-byte identical to the latest commit:
+```bash
+gogit reset --hard
+# or
+gogit r --hard
+```
+
+The warning explicitly calls out that untracked files will be lost too when `--hard` is used.
+No other flag is accepted — anything other than exactly `--hard` (e.g. `--force`) is rejected
+with a clear error before any git command runs. If there is nothing to revert for the mode
+you're using, `reset` says so and skips the prompt entirely; if you decline the confirmation
+(anything other than `yes`/`y`), nothing is changed.
+
 ---
 
 ## ⚠️ Important Warnings
@@ -324,6 +357,11 @@ runs.
 > **Branch Deletion**
 > 
 > The `delete` command uses `git branch -D` (force delete), which will delete branches even if they contain unmerged changes. Always verify you're deleting the correct branch.
+
+> [!CAUTION]
+> **Resetting Local Changes**
+>
+> The `reset` command discards all uncommitted tracked changes with no way to recover them, and `reset --hard` additionally deletes every untracked file. Always confirm you actually want to lose this work before typing `yes`.
 
 ---
 
