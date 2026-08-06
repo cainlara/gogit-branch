@@ -42,9 +42,19 @@ This tool is inspired by the amazing package [froggit](https://github.com/thewiz
 git clone https://github.com/cainlara/gogit-branch.git
 cd gogit-branch
 
-# Build the binary
-go build -trimpath -ldflags="-s -w" -o gogit
+# Build the binary using the provided build script (recommended)
+./scripts/build.sh
+```
 
+> [!TIP]
+> Use `./scripts/build.sh [output-name]` rather than a plain `go build` — it stamps the
+> binary with version metadata (git tag/commit, build date, and a dirty-tree flag) via
+> `-ldflags`, so the `version`/`v` command reports something meaningful instead of the
+> `dev`/`none`/`unknown` defaults. It defaults to producing a binary named `gogit`; pass a
+> different name as the first argument if you want another one (e.g.
+> `./scripts/build.sh gogit`).
+
+```bash
 # (Optional) Move to a directory in your PATH
 mv gogit /usr/local/bin/
 ```
@@ -57,7 +67,7 @@ go install github.com/cainlara/gogit-branch@latest
 
 ### Check installation
 ```bash
-gogit-branch
+gogit
 ```
 
 ---
@@ -67,7 +77,7 @@ gogit-branch
 ### Command Syntax
 
 ```bash
-gogit-branch [command]
+gogit [command]
 ```
 
 If no command is provided, the tool defaults to show current version.
@@ -76,22 +86,22 @@ If no command is provided, the tool defaults to show current version.
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `list` | `ls` | Display all branches in a formatted table with current branch indicator and commit hashes |
-| `switch` | `sw` | Interactively browse and switch to a different branch |
-| `delete` | `del` | Interactively select and delete a branch with confirmation |
-| `batch-delete` | `bd` | Interactively select and delete multiple branches with confirmation |
-| `create` | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
-| `status` | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
-| `push` | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
-| `log` | `l` | Show recent commit history in a compact, colorized one-line-per-commit format (optionally pass a limit) |
-| `version` | `v` | Show the version of this humble tool. |
+| [`list`](#list-all-branches) | `ls` | Display all branches in a formatted table with current branch indicator and commit hashes |
+| [`switch`](#switch-branches) | `sw` | Interactively browse and switch to a different branch |
+| [`delete`](#delete-a-branch) | `del` | Interactively select and delete a branch with confirmation |
+| [`batch-delete`](#batch-delete-branches) | `bd` | Interactively select and delete multiple branches with confirmation |
+| [`create`](#create-a-new-branch) | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
+| [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
+| [`push`](#push-the-current-branch) | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
+| [`log`](#view-recent-commit-history) | `l` | Show recent commit history in a compact, colorized one-line-per-commit format (optionally pass a limit) |
+| [`version`](#show-current-version) | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
 ### Examples
 
 #### Show Current Version
 ```bash
-gogit-branch version
+gogit version
 ```
 
 **Output:**
@@ -103,13 +113,13 @@ Built: 2026-01-28T19:54:08Z
 #### List All Branches
 ```bash
 # Using full command
-gogit-branch list
+gogit list
 
 # Using alias
-gogit-branch ls
+gogit ls
 
 # Default behavior (no arguments)
-gogit-branch
+gogit
 ```
 
 **Output:**
@@ -126,9 +136,9 @@ Listing branches
 
 #### Switch Branches
 ```bash
-gogit-branch switch
+gogit switch
 # or
-gogit-branch sw
+gogit sw
 ```
 
 **Interactive prompt:**
@@ -142,9 +152,9 @@ Select Target Branch
 
 #### Delete a Branch
 ```bash
-gogit-branch delete
+gogit delete
 # or
-gogit-branch del
+gogit del
 ```
 
 **Interactive prompt with confirmation:**
@@ -160,9 +170,9 @@ Are you sure you want to delete feature-x (e4f5g6h)?
 
 #### Batch Delete Branches
 ```bash
-gogit-branch batch-delete
+gogit batch-delete
 # or
-gogit-branch bd
+gogit bd
 ```
 
 **Interactive multi-selection prompt:**
@@ -186,9 +196,9 @@ Confirm deletion of selected branches: feature-x (e4f5g6h), bugfix-y (i7j8k9l)
 
 #### Create a New Branch
 ```bash
-gogit-branch create
+gogit create
 # or
-gogit-branch c
+gogit c
 ```
 
 **Interactive prompt:**
@@ -200,9 +210,9 @@ Creating branch
 
 You can also pass the branch name directly to skip the prompt entirely:
 ```bash
-gogit-branch create feature-x
+gogit create feature-x
 # or
-gogit-branch c feature-x
+gogit c feature-x
 ```
 
 **Output:**
@@ -219,9 +229,9 @@ instead.
 
 #### View and Act on Repository Status
 ```bash
-gogit-branch status
+gogit status
 # or
-gogit-branch st
+gogit st
 ```
 
 **Output:**
@@ -256,9 +266,9 @@ rejected with a clear error and nothing is committed — for `a`, nothing is sta
 
 #### Push the Current Branch
 ```bash
-gogit-branch push
+gogit push
 # or
-gogit-branch p
+gogit p
 ```
 
 **Output (branch already tracked):**
@@ -275,9 +285,9 @@ it; `push` never force-pushes or otherwise bypasses git's own safety checks.
 
 #### View Recent Commit History
 ```bash
-gogit-branch log
+gogit log
 # or
-gogit-branch l
+gogit l
 ```
 
 **Output:**
@@ -296,9 +306,9 @@ the repository has fewer than 20 commits, every commit is shown and the trailing
 
 You can pass a limit to see a different number of commits:
 ```bash
-gogit-branch log 5
+gogit log 5
 # or
-gogit-branch l 5
+gogit l 5
 ```
 
 When the supplied limit is fully satisfied (i.e. at least that many commits exist), no

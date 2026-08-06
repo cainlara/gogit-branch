@@ -49,7 +49,7 @@ func selectTrailingNote(actualCount, effectiveLimit int, explicit bool) string {
 	}
 
 	if !explicit {
-		return fmt.Sprintf("Defaulted to %d entries because no limit was provided", effectiveLimit)
+		return fmt.Sprintf("\nDefaulted to %d entries because no limit was provided", effectiveLimit)
 	}
 
 	return ""
