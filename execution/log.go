@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/cainlara/gogit-branch/core"
+
+	"github.com/fatih/color"
 )
 
 const DEFAULT_LOG_LIMIT = 20
@@ -36,6 +38,16 @@ func validateLimit(raw string) (int, error) {
 	return value, nil
 }
 
+// isDefaultNoteApplicable reports whether the "defaulted to N entries" note
+// applies: no explicit limit was supplied, and the default genuinely
+// constrained the output (at least as many commits exist as the default
+// limit). Shared between selectTrailingNote and ShowLog so the condition
+// that decides the note's text and the condition that decides its color
+// never drift apart.
+func isDefaultNoteApplicable(actualCount, effectiveLimit int, explicit bool) bool {
+	return !explicit && actualCount >= effectiveLimit
+}
+
 // selectTrailingNote decides which of three mutually-exclusive notes (if
 // any) should follow the printed commit list, per data-model.md's rule:
 //   - fewer commits exist than the effective limit → "Showing all logs",
@@ -48,7 +60,7 @@ func selectTrailingNote(actualCount, effectiveLimit int, explicit bool) string {
 		return "Showing all logs"
 	}
 
-	if !explicit {
+	if isDefaultNoteApplicable(actualCount, effectiveLimit, explicit) {
 		return fmt.Sprintf("\nDefaulted to %d entries because no limit was provided", effectiveLimit)
 	}
 
@@ -82,7 +94,11 @@ func ShowLog(gitClient *core.GitClient, limit *string) error {
 	}
 
 	if note := selectTrailingNote(len(entries), effectiveLimit, explicit); note != "" {
-		fmt.Println(note)
+		if isDefaultNoteApplicable(len(entries), effectiveLimit, explicit) {
+			color.Cyan(note)
+		} else {
+			fmt.Println(note)
+		}
 	}
 
 	return nil
