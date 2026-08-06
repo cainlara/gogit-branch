@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -370,4 +371,37 @@ func pushError(output string, err error) error {
 	}
 
 	return err
+}
+
+// Log runs `git log`, capped at limit entries, using the fixed one-line
+// colorized format this tool always shows. `--color=always` is required,
+// not cosmetic: GitClient never attaches a real TTY to git (it always
+// shells out via os/exec), so git's own color auto-detection would
+// otherwise silently strip every %C(...) placeholder in the format string
+// (research.md). On success, the trimmed output is split into one string
+// per commit, since the requested format produces exactly one line per
+// commit with no header/footer noise.
+func (g *GitClient) Log(limit int) ([]string, error) {
+	out, err := g.runGitCommandCombinedOutput(
+		"log",
+		"--color=always",
+		"--pretty=format:%Cred%h%Creset - %s %Cgreen(%cr) %C(bold blue)<%an>%Creset",
+		fmt.Sprintf("-%d", limit),
+	)
+	if err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) || strings.HasPrefix(output, OUTPUT_FATAL_PREFIX) {
+			return nil, errors.New(output)
+		}
+
+		return nil, err
+	}
+
+	trimmed := strings.TrimRight(string(out), "\n")
+	if trimmed == "" {
+		return []string{}, nil
+	}
+
+	return strings.Split(trimmed, "\n"), nil
 }

@@ -27,6 +27,8 @@ const (
 	MODE_STATUS_SHORT       = "st"
 	MODE_PUSH_LONG          = "push"
 	MODE_PUSH_SHORT         = "p"
+	MODE_LOG_LONG           = "log"
+	MODE_LOG_SHORT          = "l"
 	MODE_VERSION_LONG       = "version"
 	MODE_VERSION_SHORT      = "v"
 )
@@ -48,10 +50,13 @@ func main() {
 func triggerExecution(args []string, gitClient *core.GitClient) {
 	arg := args[0]
 	isCreate := arg == MODE_CREATE_LONG || arg == MODE_CREATE_SHORT
+	isLog := arg == MODE_LOG_LONG || arg == MODE_LOG_SHORT
+	acceptsOptionalArg := isCreate || isLog
 
-	// The create/c subcommand accepts one optional extra argument (the branch
-	// name); every other subcommand keeps rejecting any extra argument.
-	if len(args) > 2 || (len(args) == 2 && !isCreate) {
+	// The create/c and log/l subcommands each accept one optional extra
+	// argument (a branch name, or a commit-count limit); every other
+	// subcommand keeps rejecting any extra argument.
+	if len(args) > 2 || (len(args) == 2 && !acceptsOptionalArg) {
 		execution.PrintHelp(true, true)
 		return
 	}
@@ -79,6 +84,12 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 		err = execution.ShowStatusAndOperate(gitClient)
 	case MODE_PUSH_LONG, MODE_PUSH_SHORT:
 		err = execution.PushCurrentBranch(gitClient)
+	case MODE_LOG_LONG, MODE_LOG_SHORT:
+		var limit *string
+		if len(args) == 2 {
+			limit = &args[1]
+		}
+		err = execution.ShowLog(gitClient, limit)
 	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
 		execution.ShowVersion()
 	default:

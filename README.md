@@ -83,6 +83,7 @@ If no command is provided, the tool defaults to show current version.
 | `create` | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
 | `status` | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
 | `push` | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
+| `log` | `l` | Show recent commit history in a compact, colorized one-line-per-commit format (optionally pass a limit) |
 | `version` | `v` | Show the version of this humble tool. |
 | `help` | `h` | Display usage information and available commands |
 
@@ -271,6 +272,39 @@ automatically sets it — equivalent to `git push --set-upstream origin <branch>
 publishing, so you never see git's "no upstream branch" error. Any other failure (no remote
 configured, a rejected/diverged push, detached HEAD, etc.) is surfaced exactly as git reports
 it; `push` never force-pushes or otherwise bypasses git's own safety checks.
+
+#### View Recent Commit History
+```bash
+gogit-branch log
+# or
+gogit-branch l
+```
+
+**Output:**
+```
+a1b2c3d - Improve error messages (2 hours ago) <Jane Doe>
+e4f5g6h - Fix a typo (1 day ago) <John Smith>
+...
+Defaulted to 20 entries because no limit was provided
+```
+
+Each line shows the commit's short hash, subject, relative date, and author, colorized
+exactly like `git log --pretty=format:"%Cred%h%Creset - %s %Cgreen(%cr)
+%C(bold blue)<%an>%Creset"`. With no argument, up to the 20 most recent commits are shown; if
+the repository has fewer than 20 commits, every commit is shown and the trailing note reads
+"Showing all logs" instead.
+
+You can pass a limit to see a different number of commits:
+```bash
+gogit-branch log 5
+# or
+gogit-branch l 5
+```
+
+When the supplied limit is fully satisfied (i.e. at least that many commits exist), no
+trailing note is shown. Only a positive whole number is accepted — anything else (text, a
+decimal, zero, or a negative number) is rejected with a clear error before any git command
+runs.
 
 ---
 

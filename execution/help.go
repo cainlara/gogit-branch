@@ -27,6 +27,7 @@ func PrintHelp(withError, withUsage bool) {
 			fmt.Println("create, c:\t\tCreate a new branch and switch to it.")
 			fmt.Println("status, st:\t\tShow the repository status and commit tracked/untracked changes.")
 			fmt.Println("push, p:\t\tPush the current branch, setting the upstream first if needed.")
+			fmt.Println("log, l:\t\tShow recent commit history, defaulting to the last 20 entries.")
 			fmt.Println("version, v:\t\tShow the version of this humble tool.")
 			fmt.Println("help, h:\t\tShow this help.")
 		}
