@@ -405,3 +405,40 @@ func (g *GitClient) Log(limit int) ([]string, error) {
 
 	return strings.Split(trimmed, "\n"), nil
 }
+
+// Reset always runs `git reset --hard`, reverting all tracked changes to the
+// current branch's latest commit. This happens regardless of removeUntracked
+// (a coincidental naming overlap with git's own --hard reset mode, not a
+// semantic one — see research.md): FR-004 requires even the no-flag mode to
+// fully revert the working tree, which plain `git reset` (index-only) would
+// not do. When removeUntracked is true, an additional `git clean -fd` runs to
+// remove untracked files too. Mirrors AddAllAndCommit's two-step, no-rollback
+// pattern: if the first command succeeds but the second fails, the first
+// step's effect is not undone.
+func (g *GitClient) Reset(removeUntracked bool) error {
+	if out, err := g.runGitCommandCombinedOutput("reset", "--hard"); err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) || strings.HasPrefix(output, OUTPUT_FATAL_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	if !removeUntracked {
+		return nil
+	}
+
+	if out, err := g.runGitCommandCombinedOutput("clean", "-fd"); err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) || strings.HasPrefix(output, OUTPUT_FATAL_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	return nil
+}
