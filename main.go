@@ -29,6 +29,8 @@ const (
 	MODE_PUSH_SHORT         = "p"
 	MODE_LOG_LONG           = "log"
 	MODE_LOG_SHORT          = "l"
+	MODE_PULL_LONG          = "pull"
+	MODE_PULL_SHORT         = "pl"
 	MODE_RESET_LONG         = "reset"
 	MODE_RESET_SHORT        = "r"
 	MODE_VERSION_LONG       = "version"
@@ -93,6 +95,11 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 			limit = &args[1]
 		}
 		err = execution.ShowLog(gitClient, limit)
+	case MODE_PULL_LONG, MODE_PULL_SHORT:
+		// Intentionally NOT added to acceptsOptionalArg: pull takes zero
+		// arguments (FR-007), so the existing guard rejects any extra arg
+		// before this branch is reached (research.md D5).
+		err = execution.PullCurrentBranch(gitClient)
 	case MODE_RESET_LONG, MODE_RESET_SHORT:
 		var flag *string
 		if len(args) == 2 {

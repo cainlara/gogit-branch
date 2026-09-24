@@ -20,6 +20,13 @@ const (
 	STATUS_UNTRACKED_PREFIX   = "??"
 
 	NO_UPSTREAM_BRANCH_MARKER = "has no upstream branch"
+
+	// ALREADY_UP_TO_DATE_MARKER is git's stable message for a `git pull` that
+	// had nothing to integrate. Substring-matched (not exact) so the legacy
+	// hyphenated spelling "Already up-to-date." also matches — same
+	// English-message-matching approach as NO_UPSTREAM_BRANCH_MARKER
+	// (research.md D2).
+	ALREADY_UP_TO_DATE_MARKER = "Already up to date"
 )
 
 type GitClient struct {
@@ -334,7 +341,7 @@ func (g *GitClient) Push() error {
 	output := string(out)
 
 	if !hasNoUpstreamBranchError(output) {
-		return pushError(output, err)
+		return outputError(output, err)
 	}
 
 	branchOut, err := g.runGitCommand("rev-parse", "--abbrev-ref", "HEAD")
@@ -346,7 +353,7 @@ func (g *GitClient) Push() error {
 
 	out, err = g.runGitCommandCombinedOutput("push", "--set-upstream", "origin", branchName)
 	if err != nil {
-		return pushError(string(out), err)
+		return outputError(string(out), err)
 	}
 
 	return nil
@@ -360,17 +367,59 @@ func hasNoUpstreamBranchError(output string) bool {
 	return strings.Contains(output, NO_UPSTREAM_BRANCH_MARKER)
 }
 
-// pushError turns a failed push's combined output into an error carrying
-// git's own message. Unlike the other GitClient commands, a rejected
-// `git push`'s output can start with a "To <remote>" progress line before
-// the error:/fatal: line, so this checks for the marker anywhere in the
-// output rather than only as a prefix.
-func pushError(output string, err error) error {
+// outputError turns a failed git command's combined output into an error
+// carrying git's own message. Network-facing commands (push, fetch, pull) can
+// emit progress lines ("To <remote>…", "From <remote>…") BEFORE the
+// error:/fatal: line — unlike the checkout/log/reset family, whose failures
+// emit that prefix as their very first line — so this checks for the marker
+// anywhere in the output rather than only as a prefix (research.md D3).
+//
+// Marker-free output is still carried when present: `git pull`'s
+// no-upstream and detached-HEAD failures print actionable English with NO
+// error:/fatal: prefix at all (implementation-time discovery, research.md D3),
+// and surfacing that beats exec's bare "exit status 128" (SC-005). Only an
+// empty output falls back to the raw command error.
+func outputError(output string, err error) error {
 	if strings.Contains(output, OUTPUT_ERROR_PREFIX) || strings.Contains(output, OUTPUT_FATAL_PREFIX) {
 		return errors.New(output)
 	}
 
+	if trimmed := strings.TrimSpace(output); trimmed != "" {
+		return errors.New(trimmed)
+	}
+
 	return err
+}
+
+// Fetch runs `git fetch`, updating the remote-tracking refs for the configured
+// remote without touching the working tree or the current branch. It is the
+// first step of the pull command: execution/pull.go only proceeds to Pull()
+// when this returns nil (FR-002, FR-003). Failures (no remote, unreachable
+// remote, auth errors) are wrapped via outputError so git's actionable message
+// survives even when preceded by progress output (research.md D3).
+func (g *GitClient) Fetch() error {
+	out, err := g.runGitCommandCombinedOutput("fetch")
+	if err != nil {
+		return outputError(string(out), err)
+	}
+
+	return nil
+}
+
+// Pull runs a plain `git pull` for the current branch — deliberately WITHOUT
+// --force or --rebase, so git's own safety checks (non-fast-forward refusal,
+// uncommitted-change overwrite refusal) stay intact (contract §2 guarantee G2).
+// On success it reports whether remote commits were actually integrated:
+// updated=false exactly when git prints ALREADY_UP_TO_DATE_MARKER, updated=true
+// otherwise (FR-004, research.md D2, data-model.md "Pull Outcome"). On failure
+// the branch is left as git left it — Pull never rolls back or retries.
+func (g *GitClient) Pull() (bool, error) {
+	out, err := g.runGitCommandCombinedOutput("pull")
+	if err != nil {
+		return false, outputError(string(out), err)
+	}
+
+	return !strings.Contains(string(out), ALREADY_UP_TO_DATE_MARKER), nil
 }
 
 // Log runs `git log`, capped at limit entries, using the fixed one-line

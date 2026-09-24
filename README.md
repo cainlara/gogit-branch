@@ -92,6 +92,7 @@ If no command is provided, the tool defaults to show current version.
 | `help` | `h` | Display usage information and available commands |
 | [`list`](#list-all-branches) | `ls` | Display all branches in a formatted table with current branch indicator and commit hashes |
 | [`log`](#view-recent-commit-history) | `l` | Show recent commit history in a compact, colorized one-line-per-commit format (optionally pass a limit) |
+| [`pull`](#pull-the-current-branch) | `pl` | Fetch remote updates first, then pull the current branch from its upstream |
 | [`push`](#push-the-current-branch) | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
 | [`reset`](#discard-local-changes) | `r` | **DANGER**: irreversibly discard uncommitted changes (add `--hard` to also remove untracked files) |
 | [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
@@ -264,6 +265,35 @@ Press a single key to act, no Enter required:
 
 A commit message is required for both `c` and `a`; an empty (or whitespace-only) message is
 rejected with a clear error and nothing is committed — for `a`, nothing is staged either.
+
+#### Pull the Current Branch
+```bash
+gogit pull
+# or
+gogit pl
+```
+
+**Output (remote had new commits):**
+```
+Pulling branch
+Fetching remote updates...
+🚀 Pulled current branch from the remote
+```
+
+**Output (nothing new on the remote):**
+```
+Pulling branch
+Fetching remote updates...
+🌿 Branch already up to date
+```
+
+`pull` always runs a fetch first and only proceeds to the pull step when that fetch
+succeeded — so a failure (unreachable remote, no remote configured) is reported before
+anything is attempted, never half-completed. It updates only the current branch from its
+upstream, takes no arguments, and never discards uncommitted local changes: if incoming
+commits would overwrite them, git's own refusal is surfaced instead. Every failure (no
+upstream, detached HEAD, diverged history needing reconciliation, conflicting local
+changes) is reported exactly as git reports it; `pull` never force-merges or rebases.
 
 #### Push the Current Branch
 ```bash
