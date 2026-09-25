@@ -1,23 +1,26 @@
 <!--
 Sync Impact Report
-- Version change: [TEMPLATE UNFILLED] → 1.0.0 (initial ratification)
-- Modified principles: n/a (first fill of the template)
-- Added sections:
-  - Core Principles: Shell Out, Don't Reimplement Git; Strict One-Way Layered Architecture;
-    Confirm Before Destructive Actions (NON-NEGOTIABLE); Centralized, Predictable Error Handling;
-    Minimal Dependencies & Idiomatic Go Simplicity
-  - Additional Constraints (build/version/UX/license constraints)
-  - Development Workflow
-  - Governance (amendment procedure, versioning policy, compliance review)
+- Version change: 1.0.0 → 1.1.0 (MINOR: materially expanded network-safety guidance and
+  broader destructive-action coverage; no numbered principle removed or redefined)
+- Modified principles:
+  - III. Confirm Before Destructive Actions (NON-NEGOTIABLE) → title unchanged; now also
+    covers `reset`'s confirm flow, and the confirmation mechanism is corrected to the shared
+    `confirmYesNo` helper (promptui `IsConfirm: true` is intentionally avoided)
+  - V. Minimal Dependencies & Idiomatic Go Simplicity → dependency list completed with
+    `golang.org/x/term` (raw key-press input for the `status` view)
+  - Additional Constraints (network policy) → "never makes network calls" replaced by a
+    scoped policy: network only via `git` itself where a command requires it
+    (`push`/`pull`/`fetch`, plus `switch`'s MUST-run refresh on remote-only selection with
+    abort-on-failure); list rendering and local-branch selections MUST stay offline
+- Added sections: none
 - Removed sections: none
-- Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ (generic "Constitution Check" gate derives from this file at plan time; no hardcoded principle text to update)
-  - .specify/templates/spec-template.md ✅ (language-agnostic; no changes required)
-  - .specify/templates/tasks-template.md ✅ (language-agnostic; no changes required)
-  - .specify/templates/commands/*.md ⚠ pending (directory does not exist in this project checkout; nothing to sync)
-  - README.md / CLAUDE.md ✅ (principles below were derived from, and remain consistent with, both files)
-- Follow-up TODOs:
-  - None. RATIFICATION_DATE was derived from the repository's initial commit (2024-07-22).
+- Modified sections (accuracy fixes):
+  - Development Workflow → command dispatch table completed (added `create`/`c`,
+    `status`/`st`, `push`/`p`, `pull`/`pl`, `log`/`l`, `reset`/`r`); test-suite line updated
+    to reflect the existing unit tests for pure, non-git-invoking logic
+- Templates requiring updates: none — plan/spec/tasks templates and command files derive
+  from this file at runtime (no hardcoded principle text to sync)
+- Follow-up TODOs: none (no placeholders deferred; RATIFICATION_DATE unchanged: 2024-07-22)
 -->
 
 # GoGit Branch Manager Constitution
@@ -46,11 +49,16 @@ testable, and safe to change without hidden coupling.
 
 ### III. Confirm Before Destructive Actions (NON-NEGOTIABLE)
 `delete` and `batch-delete` use `git branch -D` (force delete, ignoring unmerged-changes
-safety). Both flows MUST always prompt for an explicit `yes`/`y` confirmation
-(`promptui.Prompt{IsConfirm: true}`) before invoking `core.GitClient`, and this
-confirm-before-force-delete pattern MUST be preserved in any change that touches these flows.
-Rationale: force-delete is irreversible and can silently discard unmerged work if left
-unguarded; an explicit confirmation is the only safety net.
+safety), and `reset` reverts tracked changes with `git reset --hard` (plus `git clean -fd`
+when invoked with `--hard`). Every flow that has destructive work to perform MUST prompt for
+an explicit `yes`/`y` confirmation before invoking `core.GitClient` — via the shared
+`confirmYesNo` helper in `execution/common.go`, which accepts `y`/`yes` case-insensitively
+and intentionally avoids promptui's `IsConfirm: true` mode (its built-in accept check rejects
+`yes`, which would let the rendered prompt and the actual outcome disagree). `reset` may skip
+the prompt only when there is nothing to revert. This confirm-before-destructive pattern MUST
+be preserved in any change that touches these flows.
+Rationale: force-delete and hard-reset are irreversible and can silently discard unmerged or
+uncommitted work if left unguarded; an explicit confirmation is the only safety net.
 
 ### IV. Centralized, Predictable Error Handling
 `execution` functions MUST return `error` rather than printing failures themselves;
@@ -62,9 +70,10 @@ inconsistent error presentation.
 
 ### V. Minimal Dependencies & Idiomatic Go Simplicity
 The dependency footprint MUST stay small and deliberate — currently `fatih/color`,
-`jedib0t/go-pretty/v6`, and `manifoldco/promptui`. New dependencies (in particular a Git
-library or a heavyweight CLI/UI framework) require explicit justification against this
-principle. All code MUST pass `go fmt ./...` and `go vet ./...`.
+`jedib0t/go-pretty/v6`, `manifoldco/promptui`, and `golang.org/x/term` (raw key-press input
+for the `status` view). New dependencies (in particular a Git library or a heavyweight
+CLI/UI framework) require explicit justification against this principle. All code MUST pass
+`go fmt ./...` and `go vet ./...`.
 Rationale: a small, fast, easily-auditable CLI is the project's core value proposition;
 every added dependency erodes that.
 
@@ -81,20 +90,30 @@ every added dependency erodes that.
   `NewDummyBranch("Cancel ...")` entry; the multi-select flow (`batch-delete`) prepends a
   `NewDoneBranch("Done")` entry and recurses until "Done" is chosen. New interactive flows
   MUST follow this same sentinel pattern instead of introducing bespoke exit handling.
-- Licensed under MIT. No user data leaves the local machine — the tool only shells out to
-  the local `git` binary and never makes network calls.
+- Licensed under MIT. No data generated by the tool itself leaves the local machine: all Git
+  interaction happens by shelling out to the local `git` binary (Principle I).
+- All network activity is performed by `git` itself and only where a command requires it:
+  `push`, `pull`, `fetch`, and — in `switch` — the refresh that MUST run when a remote-only
+  branch is selected (before the checkout, so the user lands on the branch's current remote
+  tip; if that refresh fails, the switch MUST abort with an error and no branch change).
+  Rendering any branch list MUST NOT perform network operations, and selecting a local
+  branch in `switch` MUST NOT perform any sync/fetch — the tool only switches to it and
+  restores that branch's local state.
 
 ## Development Workflow
 
 - Build via `go build -o gogit-branch .`, or `./scripts/build.sh [output-name]` for
   version-stamped builds mirroring CI/release builds.
 - `go fmt ./...` and `go vet ./...` MUST pass before work is considered complete.
-- There is currently no test suite (`go test ./...` finds no tests). New user-facing
+- Unit tests exist for pure, non-git-invoking logic only (branch-name validation,
+  status-line categorization, branch-line parsing); there is no end-to-end harness, so
+  git-invoking flows are validated manually per each feature's quickstart. New user-facing
   functionality SHOULD add tests per the README's contribution guidelines, and any
   user-facing change MUST update the relevant documentation (README.md and/or CLAUDE.md).
 - One subcommand = one file under `execution/`, with a single exported entry point wired
   into `main.go`'s command dispatch table (`list`/`ls`, `switch`/`sw`, `delete`/`del`,
-  `batch-delete`/`bd`, `version`/`v`, `help`/`h`).
+  `batch-delete`/`bd`, `create`/`c`, `status`/`st`, `push`/`p`, `pull`/`pl`, `log`/`l`,
+  `reset`/`r`, `version`/`v`, `help`/`h`).
 
 ## Governance
 
@@ -109,4 +128,4 @@ architecture (Principle II). Complexity or new dependencies that conflict with P
 must be justified in the PR description before merging. Use CLAUDE.md for day-to-day runtime
 development guidance; this constitution governs when the two conflict.
 
-**Version**: 1.0.0 | **Ratified**: 2024-07-22 | **Last Amended**: 2026-08-05
+**Version**: 1.1.0 | **Ratified**: 2024-07-22 | **Last Amended**: 2026-09-25

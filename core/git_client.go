@@ -123,12 +123,127 @@ func (g *GitClient) Branches(includeCurrent bool) ([]model.Branch, error) {
 	return branches, nil
 }
 
+// RemoteRef is one remote-tracking ref as read by a single
+// `git for-each-ref refs/remotes` call: the short ref name (origin/feature-x),
+// its remote/local name split, and its hashes. It is a plain data holder in
+// the same getter style as model.Branch (research D1/D2, data-model.md).
+type RemoteRef struct {
+	remoteName string
+	localName  string
+	refName    string
+	shortHash  string
+	fullHash   string
+}
+
+// NewRemoteRef splits a short remote-tracking ref name into its remote and
+// local parts at the FIRST slash (the local name may itself contain slashes,
+// e.g. origin/feature/foo) and derives the 7-char short hash from fullHash —
+// the same [:7] convention Branches() applies (research D8). Returns nil for
+// malformed input (no slash, or a hash too short to slice), so callers can
+// skip the line rather than produce a broken entry.
+func NewRemoteRef(refName, fullHash string) *RemoteRef {
+	slash := strings.Index(refName, "/")
+	if slash <= 0 || slash == len(refName)-1 || len(fullHash) < 7 {
+		return nil
+	}
+
+	return &RemoteRef{
+		remoteName: refName[:slash],
+		localName:  refName[slash+1:],
+		refName:    refName,
+		shortHash:  fullHash[:7],
+		fullHash:   fullHash,
+	}
+}
+
+func (r RemoteRef) GetRemoteName() string {
+	return r.remoteName
+}
+
+func (r RemoteRef) GetLocalName() string {
+	return r.localName
+}
+
+// GetRefName returns the full short ref (e.g. "origin/feature-x") — the
+// remoteRef field of the model.Branch this record becomes.
+func (r RemoteRef) GetRefName() string {
+	return r.refName
+}
+
+func (r RemoteRef) GetShortHash() string {
+	return r.shortHash
+}
+
+func (r RemoteRef) GetFullHash() string {
+	return r.fullHash
+}
+
+// parseRemoteRefs parses the output of
+// `git for-each-ref refs/remotes --format='%(objectname) %(refname:short) %(symref)'`
+// (research D1). Rows with a non-empty %(symref) are symbolic pointers such
+// as origin/HEAD and are dropped (FR-008) — filtered by the field's presence,
+// never by matching the string "HEAD". Malformed lines are skipped; an empty
+// output yields an empty list (no remotes configured).
+func parseRemoteRefs(output string) []RemoteRef {
+	refs := make([]RemoteRef, 0)
+
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		if len(fields) >= 3 && fields[2] != "" {
+			continue
+		}
+
+		ref := NewRemoteRef(fields[1], fields[0])
+		if ref == nil {
+			continue
+		}
+
+		refs = append(refs, *ref)
+	}
+
+	return refs
+}
+
+// RemoteRefs enumerates the locally cached remote-tracking refs in a single
+// `git for-each-ref refs/remotes` process — a strictly local read, so the
+// switch list renders offline (FR-007/SC-006; research D1) — and parses them
+// via parseRemoteRefs. Errors from the git invocation itself (not a repo,
+// corrupt repo) propagate like any other core failure (Constitution IV).
+func (g *GitClient) RemoteRefs() ([]RemoteRef, error) {
+	out, err := g.runGitCommand("for-each-ref", "refs/remotes", "--format=%(objectname) %(refname:short) %(symref)")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseRemoteRefs(string(out)), nil
+}
+
 func (g *GitClient) Checkout(branch model.Branch) error {
-	out, err := g.runGitCommandCombinedOutput("checkout", branch.GetName())
+	var out []byte
+	var err error
+
+	if branch.IsRemoteBranch() {
+		// Remote-only entry: create the local branch at the recorded
+		// remote-tracking tip with an explicit startpoint — never DWIM
+		// (ambiguous when two remotes offer the same name), never a bare-ref
+		// checkout (that would detach HEAD). Research D3, FR-003/FR-009.
+		out, err = g.runGitCommandCombinedOutput("checkout", "-b", branch.GetName(), branch.GetRemoteRef())
+	} else {
+		out, err = g.runGitCommandCombinedOutput("checkout", branch.GetName())
+	}
+
 	if err != nil {
 		output := string(out)
 
-		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) {
+		// The -b path fails with git's "fatal:" messages (branch exists,
+		// startpoint unknown), the plain path with its historical "error:"
+		// ones — both are first-line-prefixed and carry the actionable text
+		// (research D3, contract §3 S4).
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) || strings.HasPrefix(output, OUTPUT_FATAL_PREFIX) {
 			return errors.New(output)
 		}
 

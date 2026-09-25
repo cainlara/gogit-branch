@@ -19,7 +19,7 @@ This tool is inspired by the amazing package [froggit](https://github.com/thewiz
 
 ### Key Features
 
-- 🌿 **Interactive Branch Switching** - Browse and switch between branches with an elegant selection interface
+- 🌿 **Interactive Branch Switching** - Browse local and remote-only branches with an elegant selection interface
 - 🗑️ **Safe Branch Deletion** - Delete branches with confirmation prompts to prevent accidental data loss
 - 📊 **Visual Branch Listing** - Display all branches in a formatted table with commit hashes
 - 🎨 **Colorized Output** - Enhanced readability with color-coded terminal output
@@ -96,7 +96,7 @@ If no command is provided, the tool defaults to show current version.
 | [`push`](#push-the-current-branch) | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
 | [`reset`](#discard-local-changes) | `r` | **DANGER**: irreversibly discard uncommitted changes (add `--hard` to also remove untracked files) |
 | [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
-| [`switch`](#switch-branches) | `sw` | Interactively browse and switch to a different branch |
+| [`switch`](#switch-branches) | `sw` | Interactively browse local and remote-only branches (marked `l`/`r`) and switch to the selection |
 | [`version`](#show-current-version) | `v` | Show the version of this humble tool. |
 
 ### Examples
@@ -143,12 +143,23 @@ gogit switch
 gogit sw
 ```
 
+Lists every local branch **and** every remote-only branch cached from any configured
+remote. Local rows are marked `l` (cyan) and come first; remote-only rows follow, marked
+`r` (magenta), with `Cancel Switch` last. Selecting a local branch switches with no
+network access at all; selecting a remote row first refreshes (`git fetch`) and then
+creates the local branch at the remote's tip — if the refresh fails, the switch is
+aborted and your current branch stays untouched. A remote-only branch that already
+exists locally is shown once, as a local row.
+
 **Interactive prompt:**
 ```
 Switching branches
 Select Target Branch
-🌿 feature-x (e4f5g6h1234567890abcdef1234567890abcdef)
-  bugfix-y (i7j8k9l)
+🌿 l feature-x (e4f5g6h)
+  l bugfix-y (i7j8k9l)
+  r remote-only (a1b2c3d)
+  r origin/shared (f0e1d2c)
+  r upstream/shared (f0e1d2c)
   Cancel Switch
 ```
 
