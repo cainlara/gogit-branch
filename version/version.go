@@ -38,7 +38,7 @@ func Long() string {
 	return strings.Join(parts, ", ")
 }
 
-func appName() string { return "gogit-branch" }
+func appName() string { return "gogit" }
 
 func vcsSummary(bi *debug.BuildInfo) string {
 	var rev, t, mod string

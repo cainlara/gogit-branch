@@ -87,6 +87,7 @@ If no command is provided, the tool defaults to show current version.
 | Command | Alias | Description |
 |---------|-------|-------------|
 | [`batch-delete`](#batch-delete-branches) | `bd` | Interactively select and delete multiple branches with confirmation |
+| [`clone`](#clone-a-remote-repository) | `cl` | Clone a remote repository into the current directory (optional name/email identity, or `-anon` to skip), including submodules |
 | [`create`](#create-a-new-branch) | `c` | Create a new branch and switch to it (optionally pass the branch name directly) |
 | [`delete`](#delete-a-branch) | `del` | Interactively select and delete a branch with confirmation |
 | `help` | `h` | Display usage information and available commands |
@@ -211,6 +212,43 @@ Confirm deletion of selected branches: feature-x (e4f5g6h), bugfix-y (i7j8k9l)
 
 > [!TIP]
 > Use the batch-delete command to efficiently clean up multiple branches at once. Press **Enter** to toggle selection. Select "Done" when you've finished choosing branches.
+
+#### Clone a Remote Repository
+```bash
+gogit clone <repo-url> [name] [email] [-anon]
+# or
+gogit cl <repo-url>
+```
+
+Clones into the current directory — a new folder named after the repository — including any
+submodules, with an announce line and live progress while cloning.
+
+**Identity supplied up front (no prompts):**
+```bash
+gogit clone https://github.com/org/repo.git "Jane Doe" "jane@example.com"
+```
+The name and email are recorded as the clone's commit identity, scoped to that clone only —
+your global configuration is never touched.
+
+**Prompted (URL only):** after a successful clone the tool asks for a user name and then a
+user email. An empty answer skips that field; two empty answers skip identity entirely
+(same effect as `-anon`). Cancelling the prompts keeps the clone and skips identity setup.
+
+**Anonymous:** `-anon` skips both prompts and identity setup:
+```bash
+gogit clone https://github.com/org/repo.git -anon
+```
+
+> [!NOTE]
+> `-anon` cannot be combined with a name/email, and name/email must be provided as a pair.
+> The tool refuses contradictory arguments before cloning anything.
+
+**Output:**
+```
+Cloning repository
+Cloning https://github.com/org/repo.git...
+🚀 Cloned repository — identity set for this repository
+```
 
 #### Create a New Branch
 ```bash

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -68,10 +69,17 @@ func (g *GitClient) runGitCommand(args ...string) ([]byte, error) {
 }
 
 func (g *GitClient) runGitCommandCombinedOutput(args ...string) ([]byte, error) {
+	return runGitCommandCombinedOutputAt(g.Path, args...)
+}
+
+// runGitCommandCombinedOutputAt is runGitCommandCombinedOutput with an explicit
+// working directory (dir "" = inherit the process working directory), used by
+// commands that operate relative to the launch pwd rather than the repo path.
+func runGitCommandCombinedOutputAt(dir string, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", args...)
 
-	if g.Path != "" {
-		cmd.Dir = g.Path
+	if dir != "" {
+		cmd.Dir = dir
 	}
 
 	return cmd.CombinedOutput()
@@ -622,10 +630,18 @@ func isProgressFragment(fragment string) bool {
 // stderr error block therefore always precedes the stdout "Updating a..b"
 // (research.md D8 amendment 2, quickstart P13/010 S9).
 func (g *GitClient) runGitCommandWithProgress(onProgress ProgressFunc, args ...string) ([]byte, error) {
+	return runGitCommandWithProgressAt(g.Path, onProgress, args...)
+}
+
+// runGitCommandWithProgressAt is runGitCommandWithProgress with an explicit
+// working directory instead of the client's repo path: dir "" means inherit
+// the process working directory (the clone command runs in the launch pwd,
+// which may be outside any repository — research.md D3).
+func runGitCommandWithProgressAt(dir string, onProgress ProgressFunc, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", args...)
 
-	if g.Path != "" {
-		cmd.Dir = g.Path
+	if dir != "" {
+		cmd.Dir = dir
 	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -937,4 +953,77 @@ func (g *GitClient) Reset(removeUntracked bool) error {
 	}
 
 	return nil
+}
+
+// CloneWithProgress runs `git clone --recurse-submodules --progress <url>` in
+// the process working directory — the launch pwd, NOT g.Path, because clone is
+// the one command that legitimately runs outside any repository (and inside one
+// must still land in the pwd the user launched from, research.md D3). Submodules
+// are always included (spec FR-015); `--progress` is forced because GitClient
+// never attaches a TTY (same reason as FetchWithProgress). On failure the
+// accumulated output is wrapped via outputError exactly like fetch/pull, so
+// git's `fatal:` text survives; on success the raw output is returned for
+// callers that need it (execution currently ignores it).
+func (g *GitClient) CloneWithProgress(url string, onProgress ProgressFunc) (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		dir = ""
+	}
+
+	out, err := runGitCommandWithProgressAt(dir, onProgress, "clone", "--recurse-submodules", "--progress", url)
+	if err != nil {
+		return "", outputError(string(out), err)
+	}
+
+	return string(out), nil
+}
+
+// SetLocalIdentity writes the commit identity into the cloned repository's
+// LOCAL config (never --global/--system — spec FR-004): each non-empty value
+// becomes one `git -C <dir> config user.<field> <value>` invocation, and an
+// empty value skips its field entirely (clarification A4: empty = skip that
+// setting; both empty = caller must not call this at all, the -anon effect).
+// dir is resolved relative to the process working directory, matching where
+// CloneWithProgress landed the repository (research.md D5). Failures are
+// wrapped via outputError and returned — the clone itself is kept
+// (spec FR-010), so execution never rolls back.
+func (g *GitClient) SetLocalIdentity(dir, name, email string) error {
+	if name != "" {
+		if out, err := runGitCommandCombinedOutputAt("", "-C", dir, "config", "user.name", name); err != nil {
+			return outputError(string(out), err)
+		}
+	}
+
+	if email != "" {
+		if out, err := runGitCommandCombinedOutputAt("", "-C", dir, "config", "user.email", email); err != nil {
+			return outputError(string(out), err)
+		}
+	}
+
+	return nil
+}
+
+// TargetDirFromURL derives the directory git will create for `git clone
+// <url>` in the launch pwd — the basename rule git itself uses (research.md
+// D2): trailing slashes dropped, then the segment after the last "/" (or the
+// last ":" when the URL has no "/", scp-style `host:path`), then a trailing
+// ".git" removed. Pure and unit-tested; a disagreement with git's actual
+// choice degrades exactly as data-model.md specifies (config step fails,
+// clone kept, FR-010).
+func TargetDirFromURL(url string) string {
+	trimmed := strings.TrimRight(strings.TrimSpace(url), "/")
+	if trimmed == "" {
+		return ""
+	}
+
+	base := trimmed
+	if i := strings.LastIndex(base, "/"); i >= 0 {
+		base = base[i+1:]
+	} else if j := strings.LastIndex(base, ":"); j >= 0 {
+		base = base[j+1:]
+	}
+
+	base = strings.TrimSuffix(base, ".git")
+
+	return base
 }

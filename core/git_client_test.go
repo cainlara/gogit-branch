@@ -499,3 +499,33 @@ exit 1
 		t.Errorf("output = %q, want arrival-ordered %q", string(out), want)
 	}
 }
+
+func TestTargetDirFromURL(t *testing.T) {
+	cases := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{"https with .git", "https://github.com/cainlara/gogit-branch.git", "gogit-branch"},
+		{"https without .git", "https://github.com/cainlara/gogit-branch", "gogit-branch"},
+		{"trailing slash", "https://github.com/cainlara/gogit-branch/", "gogit-branch"},
+		{"trailing slash with .git", "https://github.com/cainlara/gogit-branch.git/", "gogit-branch"},
+		{"ssh url", "ssh://git@github.com/cainlara/gogit-branch.git", "gogit-branch"},
+		{"scp style with path", "git@github.com:cainlara/gogit-branch.git", "gogit-branch"},
+		{"scp style no path", "github.com:gogit-branch.git", "gogit-branch"},
+		{"local path", "/tmp/clone-fixtures/origin", "origin"},
+		{"local path trailing slash", "/tmp/clone-fixtures/origin/", "origin"},
+		{"whitespace padded", "  https://github.com/x/y.git  ", "y"},
+		{"port in url", "https://host:8080/repos/y.git", "y"},
+		{"empty", "", ""},
+		{"only slashes", "///", ""},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := TargetDirFromURL(c.url); got != c.want {
+				t.Errorf("TargetDirFromURL(%q) = %q, want %q", c.url, got, c.want)
+			}
+		})
+	}
+}
