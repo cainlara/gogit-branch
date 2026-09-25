@@ -143,13 +143,18 @@ gogit switch
 gogit sw
 ```
 
-Lists every local branch **and** every remote-only branch cached from any configured
-remote. Local rows are marked `l` (cyan) and come first; remote-only rows follow, marked
-`r` (magenta), with `Cancel Switch` last. Selecting a local branch switches with no
-network access at all; selecting a remote row first refreshes (`git fetch`) and then
-creates the local branch at the remote's tip — if the refresh fails, the switch is
-aborted and your current branch stays untouched. A remote-only branch that already
-exists locally is shown once, as a local row.
+Lists every local branch **and** every remote-only branch. Before the options appear,
+**every configured remote is refreshed** (`git fetch --all --prune`), so a branch a
+colleague just pushed shows up immediately and one deleted upstream disappears from the
+list; a repository with no remote skips the refresh entirely. If the refresh fails you
+get a single yellow warning plus git's own failure message, and the list is built from
+the last known remote state — selection still works. Local rows are marked `l` (cyan)
+and come first; remote-only rows follow, marked `r` (magenta), with `Cancel Switch`
+last. Selecting a local branch switches with no further network access; selecting a
+remote row first refreshes that remote (`git fetch`) and then creates the local branch
+at the remote's tip — if that selection-time refresh fails, the switch is aborted and
+your current branch stays untouched. A remote-only branch that already exists locally
+is shown once, as a local row.
 
 **Interactive prompt:**
 ```

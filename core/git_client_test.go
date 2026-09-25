@@ -168,6 +168,61 @@ func TestParseRemoteRefs(t *testing.T) {
 	})
 }
 
+func TestParseRemoteNames(t *testing.T) {
+	t.Run("multiple names preserved in order", func(t *testing.T) {
+		names := parseRemoteNames("broken\norigin\nother\n")
+
+		want := []string{"broken", "origin", "other"}
+		if len(names) != len(want) {
+			t.Fatalf("len(names) = %d, want %d", len(names), len(want))
+		}
+
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+
+	t.Run("empty output yields empty slice", func(t *testing.T) {
+		names := parseRemoteNames("")
+
+		if len(names) != 0 {
+			t.Errorf("len(names) = %d, want 0", len(names))
+		}
+	})
+
+	t.Run("blank lines skipped, surrounding whitespace trimmed", func(t *testing.T) {
+		names := parseRemoteNames("\n  origin  \n\n\tupstream\t\n")
+
+		want := []string{"origin", "upstream"}
+		if len(names) != len(want) {
+			t.Fatalf("len(names) = %d, want %d", len(names), len(want))
+		}
+
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+
+	t.Run("CRLF line endings tolerated", func(t *testing.T) {
+		names := parseRemoteNames("origin\r\nupstream\r\n")
+
+		want := []string{"origin", "upstream"}
+		if len(names) != len(want) {
+			t.Fatalf("len(names) = %d, want %d", len(names), len(want))
+		}
+
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+}
+
 func TestParseProgressPercent(t *testing.T) {
 	tests := []struct {
 		name           string

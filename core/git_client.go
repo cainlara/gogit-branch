@@ -222,6 +222,41 @@ func (g *GitClient) RemoteRefs() ([]RemoteRef, error) {
 	return parseRemoteRefs(string(out)), nil
 }
 
+// parseRemoteNames parses the output of a plain `git remote` invocation: one
+// remote name per line, in git's configured order. Empty output (no remote
+// configured) yields an empty slice; blank lines and stray whitespace are
+// skipped so only real names survive (research D2, data-model.md §2). Pure
+// and unit-tested: the switch pre-list refresh probes this first, so a
+// no-remote repository performs no network call and shows no banner (FR-005).
+func parseRemoteNames(output string) []string {
+	names := make([]string, 0)
+
+	for _, line := range strings.Split(output, "\n") {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// Remotes lists the names of all configured remotes with a single offline
+// `git remote` process — a strictly local config read, never a network call
+// (research D2). Errors from the git invocation itself (not a repo, corrupt
+// repo) propagate like any other core failure (Constitution IV); an empty
+// result means "no remote configured", not an error.
+func (g *GitClient) Remotes() ([]string, error) {
+	out, err := g.runGitCommand("remote")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseRemoteNames(string(out)), nil
+}
+
 func (g *GitClient) Checkout(branch model.Branch) error {
 	var out []byte
 	var err error
@@ -772,6 +807,31 @@ func (g *GitClient) Fetch() error {
 // (research.md D8 amendment, FR-005/SC-003).
 func (g *GitClient) FetchWithProgress(onProgress ProgressFunc) error {
 	out, err := g.runGitCommandWithProgress(onProgress, "fetch", "--progress")
+	if err != nil {
+		return outputError(string(out), err)
+	}
+
+	return nil
+}
+
+// FetchAllWithProgress refreshes remote-tracking state from EVERY configured
+// remote with git's `--progress` forced on and stderr streamed live to
+// onProgress (may be nil) — the switch command's pre-list refresh (feature
+// 013, contract §1 step 5). Each flag is mandatory (research D1):
+//
+//   - --all: attempts every remote even when an earlier one fails, so one
+//     unreachable remote never blocks the others (clarification Q1→A, N2);
+//   - --prune: drops refs whose branches were deleted upstream — plain
+//     `git fetch` does NOT prune (verified), so deleted branches would keep
+//     being listed (FR-002's second half);
+//   - --progress: required because GitClient never attaches a TTY to git.
+//
+// On failure the combined output is wrapped via outputError exactly like
+// Fetch, preserving git's per-remote attribution ("error: could not fetch
+// <remote>") — whether the caller warns-and-continues or aborts is the
+// caller's policy (FR-006 lives in execution/switch.go).
+func (g *GitClient) FetchAllWithProgress(onProgress ProgressFunc) error {
+	out, err := g.runGitCommandWithProgress(onProgress, "fetch", "--all", "--prune", "--progress")
 	if err != nil {
 		return outputError(string(out), err)
 	}

@@ -1,1 +1,3 @@
-{"feature_directory":"specs/012-switch-remote-branches"}
+{
+  "feature_directory": "specs/013-switch-fetch-before-list"
+}
