@@ -2,8 +2,6 @@ package execution
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 
 	"github.com/cainlara/gogit-branch/core"
 
@@ -59,38 +57,4 @@ func PullCurrentBranch(gitClient *core.GitClient) error {
 	}
 
 	return nil
-}
-
-// clearBarOnInterrupt ensures Ctrl+C clears the progress line before the
-// process dies (FR-010, US3, contract L3, research D5): while registered, a
-// SIGINT first runs the renderer's finish(), then the default disposition is
-// restored (signal.Reset) and SIGINT is re-raised to this process — so
-// termination behaves exactly as it would have without the handler (same
-// signal, same shell-visible exit semantics, no swallowed interrupt), with no
-// half-drawn bar remnant left for the next prompt. The returned cleanup
-// function unregisters the watch when the command completes normally; a
-// SIGINT arriving after that runs with default handling, unchanged.
-func clearBarOnInterrupt(bar *progressRenderer) func() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-
-	done := make(chan struct{})
-
-	go func() {
-		select {
-		case <-sigCh:
-			bar.finish()
-			signal.Reset(os.Interrupt)
-
-			if proc, err := os.FindProcess(os.Getpid()); err == nil {
-				_ = proc.Signal(os.Interrupt)
-			}
-		case <-done:
-		}
-	}()
-
-	return func() {
-		signal.Stop(sigCh)
-		close(done)
-	}
 }

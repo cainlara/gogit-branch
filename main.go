@@ -33,6 +33,8 @@ const (
 	MODE_PULL_SHORT         = "pl"
 	MODE_RESET_LONG         = "reset"
 	MODE_RESET_SHORT        = "r"
+	MODE_CLONE_LONG         = "clone"
+	MODE_CLONE_SHORT        = "cl"
 	MODE_VERSION_LONG       = "version"
 	MODE_VERSION_SHORT      = "v"
 )
@@ -57,12 +59,25 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 	isLog := arg == MODE_LOG_LONG || arg == MODE_LOG_SHORT
 	isReset := arg == MODE_RESET_LONG || arg == MODE_RESET_SHORT
 	acceptsOptionalArg := isCreate || isLog || isReset
+	isClone := arg == MODE_CLONE_LONG || arg == MODE_CLONE_SHORT
 
 	// The create/c, log/l, and reset/r subcommands each accept one optional
 	// extra argument (a branch name, a commit-count limit, or the --hard
 	// flag); every other subcommand keeps rejecting any extra argument.
-	if len(args) > 2 || (len(args) == 2 && !acceptsOptionalArg) {
+	// clone/cl is the exception with a RANGE: 0..4 extras (URL, optional
+	// name+email pair, optional -anon) — deeper combination validation lives
+	// in execution/clone.go so bad shapes fail before any git runs
+	// (spec FR-007, research D1/D6). A bare `clone` (no URL) also passes
+	// through here so parseCloneArgs can report the missing URL itself.
+	if isClone {
+		if len(args) > 5 {
+			execution.PrintHelp(true, true)
+
+			return
+		}
+	} else if len(args) > 2 || (len(args) == 2 && !acceptsOptionalArg) {
 		execution.PrintHelp(true, true)
+
 		return
 	}
 
@@ -106,10 +121,15 @@ func triggerExecution(args []string, gitClient *core.GitClient) {
 			flag = &args[1]
 		}
 		err = execution.ResetToLatestCommit(gitClient, flag)
+	case MODE_CLONE_LONG, MODE_CLONE_SHORT:
+		err = execution.CloneRepository(gitClient, args[1:])
 	case MODE_VERSION_LONG, MODE_VERSION_SHORT:
 		execution.ShowVersion()
 	default:
-		execution.PrintHelp(true, false)
+		// Unknown command: show the error AND the usage list (spec 014 US4
+		// scenario 2 — the usage list, including clone, must be reachable
+		// from the unrecognized-command path too).
+		execution.PrintHelp(true, true)
 	}
 
 	if err != nil {

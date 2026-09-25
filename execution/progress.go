@@ -3,6 +3,7 @@ package execution
 import (
 	"io"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,12 +21,14 @@ const (
 	// wins at the next repaint) to avoid flicker.
 	progressTickInterval = 100 * time.Millisecond
 
-	// progressStageFetching/progressStagePulling are the two stage labels the
-	// bar displays (spec FR-003, contract B3). They ride on the bar's own line
-	// and are independent of the static stdout lines in execution/pull.go
+	// progressStageFetching/progressStagePulling/progressStageCloning are the
+	// stage labels the bar displays (spec FR-003, contract B3; clone stage per
+	// feature 014 FR-014). They ride on the bar's own line and are independent
+	// of the static stdout lines in execution/pull.go and execution/clone.go
 	// (contract S4 — the bar never replaces them).
 	progressStageFetching = "Fetching remote updates"
 	progressStagePulling  = "Pulling remote updates"
+	progressStageCloning  = "Cloning repository"
 
 	// progressBarWidth is the fill width of the bracketed bar in percent mode.
 	progressBarWidth = 10
@@ -253,4 +256,38 @@ func (r *progressRenderer) renderLocked() {
 
 	_, _ = io.WriteString(r.out, clearSequence(r.rendered)+frame)
 	r.rendered = len(frame)
+}
+
+// clearBarOnInterrupt ensures Ctrl+C clears the progress line before the
+// process dies (FR-010, US3, contract L3, research D5): while registered, a
+// SIGINT first runs the renderer's finish(), then the default disposition is
+// restored (signal.Reset) and SIGINT is re-raised to this process — so
+// termination behaves exactly as it would have without the handler (same
+// signal, same shell-visible exit semantics, no swallowed interrupt), with no
+// half-drawn bar remnant left for the next prompt. The returned cleanup
+// function unregisters the watch when the command completes normally; a
+// SIGINT arriving after that runs with default handling, unchanged.
+func clearBarOnInterrupt(bar *progressRenderer) func() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	done := make(chan struct{})
+
+	go func() {
+		select {
+		case <-sigCh:
+			bar.finish()
+			signal.Reset(os.Interrupt)
+
+			if proc, err := os.FindProcess(os.Getpid()); err == nil {
+				_ = proc.Signal(os.Interrupt)
+			}
+		case <-done:
+		}
+	}()
+
+	return func() {
+		signal.Stop(sigCh)
+		close(done)
+	}
 }
