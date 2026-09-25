@@ -295,6 +295,14 @@ commits would overwrite them, git's own refusal is surfaced instead. Every failu
 upstream, detached HEAD, diverged history needing reconciliation, conflicting local
 changes) is reported exactly as git reports it; `pull` never force-merges or rebases.
 
+While fetching and pulling, a live progress bar is drawn alongside the static
+"Fetching remote updates..." line. The bar renders on the status stream
+(stderr) only when stderr is an interactive terminal: it still appears if you
+redirect stdout (e.g. `gogit pl | tee pull.log`), and produces zero bytes when
+stderr is redirected or piped (`gogit pl 2>err.txt`), keeping redirected
+output byte-identical to pre-progress-bar output. `Ctrl+C` during a pull
+clears the bar before the process exits.
+
 #### Push the Current Branch
 ```bash
 gogit push
