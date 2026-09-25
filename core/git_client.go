@@ -1,11 +1,14 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cainlara/gogit-branch/model"
 )
@@ -391,6 +394,245 @@ func outputError(output string, err error) error {
 	return err
 }
 
+// ProgressFunc receives one progress update parsed from a git command's stderr
+// stream. hasPercent reports whether this fragment carried a numeric completion
+// percentage (percent is then a value in 0..100, clamped); hasPercent=false
+// means the fragment contained no percentage and exists only as an activity
+// signal — the renderer must never treat it as a number (spec FR-008/SC-008).
+// Defined here, in core, because percent extraction is git-output parsing
+// (research.md D3).
+type ProgressFunc func(percent int, hasPercent bool)
+
+var (
+	// progressPercentRe matches numeric percent tokens git emits in progress
+	// updates ("Receiving objects:  42% (35/83)").
+	progressPercentRe = regexp.MustCompile(`\d+%`)
+
+	// sidebandProgressRe matches the non-percent sideband progress lines
+	// (`--progress`-only output such as "remote: Enumerating objects: 153,
+	// done." / "remote: Total 153 (delta 0)…"). Verified experimentally
+	// (research.md D8): plain (no --progress) non-TTY runs never emit these,
+	// so they must not leak into error text either.
+	sidebandProgressRe = regexp.MustCompile(`^(?:remote: )?(?:Enumerating|Counting|Compressing|Receiving|Resolving|Updating|Total)\b`)
+)
+
+// parseProgressPercent extracts the LAST percent token from a stderr fragment
+// (last-wins across interleaved sub-phases) and clamps values above 100 to
+// 100. Returns hasPercent=false when the fragment carries no token at all
+// (research.md D6, data-model.md "Percent Token").
+func parseProgressPercent(fragment string) (int, bool) {
+	matches := progressPercentRe.FindAllString(fragment, -1)
+	if len(matches) == 0 {
+		return 0, false
+	}
+
+	value, err := strconv.Atoi(strings.TrimSuffix(matches[len(matches)-1], "%"))
+	if err != nil {
+		return 0, false
+	}
+
+	if value > 100 {
+		value = 100
+	}
+
+	return value, true
+}
+
+// isProgressFragment reports whether a stderr fragment is git progress noise
+// rather than actionable output. Progress-shaped fragments are excluded from
+// the accumulated output that outputError wraps, so failure messages stay
+// byte-identical to the pre-feature (no --progress) behavior; fragments
+// carrying error:/fatal: markers are NEVER dropped, so real git failures —
+// including `remote: error:` lines from pre-receive hooks — survive
+// (research.md D8 amendment, spec FR-005/SC-003).
+func isProgressFragment(fragment string) bool {
+	if strings.Contains(fragment, OUTPUT_ERROR_PREFIX) || strings.Contains(fragment, OUTPUT_FATAL_PREFIX) {
+		return false
+	}
+
+	if progressPercentRe.MatchString(fragment) {
+		return true
+	}
+
+	return sidebandProgressRe.MatchString(strings.TrimSpace(fragment))
+}
+
+// runGitCommandWithProgress runs `git <args>` with stdout and stderr streamed
+// instead of buffered. Every stderr fragment (split on both \r and \n — git
+// progress uses carriage returns as separators) is reported to onProgress
+// (may be nil), and the command's full text output is accumulated so callers
+// can apply the exact same outputError/ALREADY_UP_TO_DATE_MARKER processing
+// they do on CombinedOutput results (research.md D8). Progress-shaped stderr
+// fragments are excluded from that accumulation (isProgressFragment). Output
+// ordering is deterministic: processed stderr lines are appended as they
+// arrive, raw stdout is queued and appended only after the stderr reader
+// finishes. That reproduces CombinedOutput's single-pipe time order without a
+// two-reader race, because git block-buffers its stdout when piped and flushes
+// it at process exit while stderr is written unbuffered mid-run — pull's
+// stderr error block therefore always precedes the stdout "Updating a..b"
+// (research.md D8 amendment 2, quickstart P13/010 S9).
+func (g *GitClient) runGitCommandWithProgress(onProgress ProgressFunc, args ...string) ([]byte, error) {
+	cmd := exec.Command("git", args...)
+
+	if g.Path != "" {
+		cmd.Dir = g.Path
+	}
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	var mu sync.Mutex
+	var outBuf strings.Builder
+
+	// appendOut appends processed stderr text immediately (stderr streams
+	// unbuffered mid-run, so it leads CombinedOutput's time order too).
+	appendOut := func(s string) {
+		mu.Lock()
+		outBuf.WriteString(s)
+		mu.Unlock()
+	}
+
+	// stdoutChunks holds raw stdout in arrival order; it is appended AFTER the
+	// stderr reader finishes (see runGitCommandWithProgress's doc), because
+	// git block-buffers stdout and flushes it at exit — late in time order,
+	// and a live two-reader append would race on near-simultaneous writes
+	// (research.md D8 amendment 2). Only this goroutine writes the slice; it
+	// is read after wg.Wait, which synchronizes the happens-before edge.
+	var stdoutChunks []string
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		buf := make([]byte, 4096)
+
+		for {
+			n, readErr := stdoutPipe.Read(buf)
+
+			if n > 0 {
+				stdoutChunks = append(stdoutChunks, string(buf[:n]))
+			}
+
+			if readErr != nil {
+				break
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		var partial []byte
+
+		// pendingCR tracks a \r delimiter so that the \n of a \r\n pair is
+		// swallowed (one line, not two) while a standalone \n delimiting an
+		// EMPTY fragment is a genuine blank line in git's message and must
+		// survive — git's no-tracking/detached-HEAD texts are paragraph-
+		// formatted and baseline CombinedOutput preserves those blank lines
+		// byte-for-byte (FR-005, SC-003).
+		pendingCR := false
+
+		emit := func(text string) {
+			if text == "" {
+				return
+			}
+
+			if onProgress != nil {
+				percent, hasPercent := parseProgressPercent(text)
+				onProgress(percent, hasPercent)
+			}
+
+			if !isProgressFragment(text) {
+				appendOut(text + "\n")
+			}
+		}
+
+		buf := make([]byte, 4096)
+
+		for {
+			n, readErr := stderrPipe.Read(buf)
+
+			if n > 0 {
+				partial = append(partial, buf[:n]...)
+
+				for {
+					idx := bytes.IndexAny(partial, "\r\n")
+					if idx < 0 {
+						break
+					}
+
+					delim := partial[idx]
+					frag := string(partial[:idx])
+					partial = partial[idx+1:]
+
+					if delim == '\r' {
+						pendingCR = true
+						emit(frag)
+						continue
+					}
+
+					// delim == '\n'
+					if pendingCR {
+						pendingCR = false
+					} else if frag == "" {
+						appendOut("\n")
+						continue
+					}
+
+					emit(frag)
+				}
+			}
+
+			if readErr != nil {
+				break
+			}
+		}
+
+		// Final delimiter-less remainder: append raw (git chose not to end
+		// with a newline — don't add one), still filtering progress and
+		// still feeding percent updates to the callback.
+		if len(partial) > 0 {
+			text := string(partial)
+
+			if onProgress != nil {
+				percent, hasPercent := parseProgressPercent(text)
+				onProgress(percent, hasPercent)
+			}
+
+			if !isProgressFragment(text) {
+				appendOut(text)
+			}
+		}
+	}()
+
+	wg.Wait()
+	waitErr := cmd.Wait()
+
+	// Deterministic tail: raw stdout (git's exit-time flush) after all
+	// processed stderr — see the function doc for why this beats a live
+	// interleave.
+	for _, chunk := range stdoutChunks {
+		outBuf.WriteString(chunk)
+	}
+
+	out := outBuf.String()
+
+	return []byte(out), waitErr
+}
+
 // Fetch runs `git fetch`, updating the remote-tracking refs for the configured
 // remote without touching the working tree or the current branch. It is the
 // first step of the pull command: execution/pull.go only proceeds to Pull()
@@ -399,6 +641,22 @@ func outputError(output string, err error) error {
 // survives even when preceded by progress output (research.md D3).
 func (g *GitClient) Fetch() error {
 	out, err := g.runGitCommandCombinedOutput("fetch")
+	if err != nil {
+		return outputError(string(out), err)
+	}
+
+	return nil
+}
+
+// FetchWithProgress is Fetch with git's `--progress` forced on and stderr
+// streamed live to onProgress (may be nil). `--progress` is required because
+// GitClient never attaches a TTY, so git would otherwise silence its own
+// progress output entirely (research.md D1). Error wrapping is identical to
+// Fetch — progress-shaped fragments are stripped before outputError sees the
+// text, keeping failure messages byte-identical to the non-progress path
+// (research.md D8 amendment, FR-005/SC-003).
+func (g *GitClient) FetchWithProgress(onProgress ProgressFunc) error {
+	out, err := g.runGitCommandWithProgress(onProgress, "fetch", "--progress")
 	if err != nil {
 		return outputError(string(out), err)
 	}
@@ -415,6 +673,20 @@ func (g *GitClient) Fetch() error {
 // the branch is left as git left it — Pull never rolls back or retries.
 func (g *GitClient) Pull() (bool, error) {
 	out, err := g.runGitCommandCombinedOutput("pull")
+	if err != nil {
+		return false, outputError(string(out), err)
+	}
+
+	return !strings.Contains(string(out), ALREADY_UP_TO_DATE_MARKER), nil
+}
+
+// PullWithProgress is Pull with git's `--progress` forced on and stderr
+// streamed live to onProgress (may be nil). Same guarantees as Pull: no
+// --force/--rebase, identical outcome classification via
+// ALREADY_UP_TO_DATE_MARKER (always on stdout, never stripped), and identical
+// error wrapping (research.md D8 amendment).
+func (g *GitClient) PullWithProgress(onProgress ProgressFunc) (bool, error) {
+	out, err := g.runGitCommandWithProgress(onProgress, "pull", "--progress")
 	if err != nil {
 		return false, outputError(string(out), err)
 	}
