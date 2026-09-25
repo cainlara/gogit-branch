@@ -95,6 +95,134 @@ func TestParseStatusBranchLine(t *testing.T) {
 	}
 }
 
+func TestParseRemoteRefs(t *testing.T) {
+	hashA := "1111111111111111111111111111111111111111"
+	hashB := "2222222222222222222222222222222222222222"
+	hashC := "3333333333333333333333333333333333333333"
+
+	t.Run("symref row dropped, ordinary rows kept with names split", func(t *testing.T) {
+		output := hashA + " origin/HEAD origin/main\n" +
+			hashB + " origin/feature-x \n"
+
+		refs := parseRemoteRefs(output)
+
+		if len(refs) != 1 {
+			t.Fatalf("len(refs) = %d, want 1 (origin/HEAD dropped)", len(refs))
+		}
+
+		if refs[0].GetRemoteName() != "origin" || refs[0].GetLocalName() != "feature-x" {
+			t.Errorf("split = (%q, %q), want (origin, feature-x)", refs[0].GetRemoteName(), refs[0].GetLocalName())
+		}
+
+		if refs[0].GetRefName() != "origin/feature-x" {
+			t.Errorf("GetRefName() = %q, want %q", refs[0].GetRefName(), "origin/feature-x")
+		}
+
+		if refs[0].GetFullHash() != hashB || refs[0].GetShortHash() != hashB[:7] {
+			t.Errorf("hashes = (%q, %q), want (%q, %q)", refs[0].GetFullHash(), refs[0].GetShortHash(), hashB, hashB[:7])
+		}
+	})
+
+	t.Run("multiple remotes kept in input order", func(t *testing.T) {
+		output := hashA + " origin/feature-x \n" +
+			hashB + " upstream/feature-x \n" +
+			hashC + " origin/feature-b \n"
+
+		refs := parseRemoteRefs(output)
+
+		want := []string{"origin/feature-x", "upstream/feature-x", "origin/feature-b"}
+		if len(refs) != len(want) {
+			t.Fatalf("len(refs) = %d, want %d", len(refs), len(want))
+		}
+
+		for i, w := range want {
+			if refs[i].GetRefName() != w {
+				t.Errorf("refs[%d] = %q, want %q", i, refs[i].GetRefName(), w)
+			}
+		}
+	})
+
+	t.Run("malformed lines are skipped", func(t *testing.T) {
+		output := "not-a-ref\n" +
+			hashA + " no-slash-at-all \n" +
+			hashB[:3] + " origin/short \n" +
+			hashC + " origin/good \n"
+
+		refs := parseRemoteRefs(output)
+
+		if len(refs) != 1 {
+			t.Fatalf("len(refs) = %d, want 1 (only origin/good survives)", len(refs))
+		}
+
+		if refs[0].GetRefName() != "origin/good" {
+			t.Errorf("refs[0] = %q, want %q", refs[0].GetRefName(), "origin/good")
+		}
+	})
+
+	t.Run("empty output yields empty list", func(t *testing.T) {
+		refs := parseRemoteRefs("")
+
+		if len(refs) != 0 {
+			t.Errorf("len(refs) = %d, want 0", len(refs))
+		}
+	})
+}
+
+func TestParseRemoteNames(t *testing.T) {
+	t.Run("multiple names preserved in order", func(t *testing.T) {
+		names := parseRemoteNames("broken\norigin\nother\n")
+
+		want := []string{"broken", "origin", "other"}
+		if len(names) != len(want) {
+			t.Fatalf("len(names) = %d, want %d", len(names), len(want))
+		}
+
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+
+	t.Run("empty output yields empty slice", func(t *testing.T) {
+		names := parseRemoteNames("")
+
+		if len(names) != 0 {
+			t.Errorf("len(names) = %d, want 0", len(names))
+		}
+	})
+
+	t.Run("blank lines skipped, surrounding whitespace trimmed", func(t *testing.T) {
+		names := parseRemoteNames("\n  origin  \n\n\tupstream\t\n")
+
+		want := []string{"origin", "upstream"}
+		if len(names) != len(want) {
+			t.Fatalf("len(names) = %d, want %d", len(names), len(want))
+		}
+
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+
+	t.Run("CRLF line endings tolerated", func(t *testing.T) {
+		names := parseRemoteNames("origin\r\nupstream\r\n")
+
+		want := []string{"origin", "upstream"}
+		if len(names) != len(want) {
+			t.Fatalf("len(names) = %d, want %d", len(names), len(want))
+		}
+
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+}
+
 func TestParseProgressPercent(t *testing.T) {
 	tests := []struct {
 		name           string

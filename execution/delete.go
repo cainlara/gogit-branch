@@ -26,7 +26,7 @@ func ListAndDeleteBranch(gitClient *core.GitClient) error {
 	cancelOption := model.NewDummyBranch("Cancel Delete")
 	branches = append(branches, *cancelOption)
 
-	selectedBranch, err := listBranchesAndSelectTarget(branches, EMOJI_SKULL)
+	selectedBranch, err := listBranchesAndSelectTarget(branches, EMOJI_SKULL, false)
 	if err != nil {
 		return err
 	}

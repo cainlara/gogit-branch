@@ -30,7 +30,7 @@ func PrintHelp(withError, withUsage bool) {
 			fmt.Println("push, p:\t\tPush the current branch, setting the upstream first if needed.")
 			fmt.Println("reset, r:\t\tDANGER: irreversibly discard all uncommitted changes (add --hard to also remove untracked files).")
 			fmt.Println("status, st:\t\tShow the repository status and commit tracked/untracked changes.")
-			fmt.Println("switch, sw:\t\tList all the branches available to switch.")
+			fmt.Println("switch, sw:\t\tRefresh remote branch information, then list local and remote-only branches (marked l/r) and switch to the selection.")
 			fmt.Println("version, v:\t\tShow the version of this humble tool.")
 		}
 	}

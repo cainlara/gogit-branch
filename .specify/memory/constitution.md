@@ -1,23 +1,30 @@
 <!--
 Sync Impact Report
-- Version change: [TEMPLATE UNFILLED] → 1.0.0 (initial ratification)
-- Modified principles: n/a (first fill of the template)
-- Added sections:
-  - Core Principles: Shell Out, Don't Reimplement Git; Strict One-Way Layered Architecture;
-    Confirm Before Destructive Actions (NON-NEGOTIABLE); Centralized, Predictable Error Handling;
-    Minimal Dependencies & Idiomatic Go Simplicity
-  - Additional Constraints (build/version/UX/license constraints)
-  - Development Workflow
-  - Governance (amendment procedure, versioning policy, compliance review)
+- Version change: 1.1.0 → 1.2.0 (MINOR: materially expanded network-safety guidance for
+  switch's new pre-listing refresh, plus Principle IV's sanctioned exception list expanded
+  and corrected; no numbered principle removed or redefined)
+- Modified principles:
+  - IV. Centralized, Predictable Error Handling → title unchanged; exception list now names
+    the two delete flows AND reset's cancellation message (accuracy correction aligned with
+    CLAUDE.md) AND switch's pre-listing refresh warning (the FR-006 warn-and-continue output
+    feature 013 requires, which MUST be printed rather than returned)
+  - Additional Constraints (network policy) → "Rendering any branch list MUST NOT perform
+    network operations" replaced by the scoped policy: switch performs a pre-listing refresh
+    (all configured remotes, prune, all remotes attempted even when one fails) whose failure
+    downgrades to a single warning + last-known list (never abort, never hang) and which is
+    skipped entirely when no remote is configured; list/delete/batch-delete rendering stays
+    network-free; the selection-time refresh (abort-on-failure) and the local-pick-no-sync
+    rule are unchanged
+- Added sections: none
 - Removed sections: none
-- Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ (generic "Constitution Check" gate derives from this file at plan time; no hardcoded principle text to update)
-  - .specify/templates/spec-template.md ✅ (language-agnostic; no changes required)
-  - .specify/templates/tasks-template.md ✅ (language-agnostic; no changes required)
-  - .specify/templates/commands/*.md ⚠ pending (directory does not exist in this project checkout; nothing to sync)
-  - README.md / CLAUDE.md ✅ (principles below were derived from, and remain consistent with, both files)
-- Follow-up TODOs:
-  - None. RATIFICATION_DATE was derived from the repository's initial commit (2024-07-22).
+- Modified sections: accuracy fixes:
+  - Development Workflow → none required (test-suite line already generic; switch's new
+    docs land with the feature itself)
+- Templates requiring updates: none — plan/spec/tasks templates and command files derive
+  from this file at runtime (no hardcoded principle text to sync)
+- Follow-up TODOs: none (no placeholders deferred; RATIFICATION_DATE unchanged: 2024-07-22)
+- NOTE: this report is temporary scratch material for human review of the amendment and is
+  expected to be removed before the amended constitution file is committed.
 -->
 
 # GoGit Branch Manager Constitution
@@ -31,7 +38,7 @@ is the single, exclusive place that shells out to `git` and parses its output (e
 the `* ` current-branch prefix from `git branch` output, detecting `error:`-prefixed stderr).
 No other package may invoke `os/exec` for Git commands.
 Rationale: keeps the tool lightweight, transparent, and trivially compatible with whatever
-`git` the user already has installed, instead of tracking a second implementation of Git
+git the user already has installed, instead of tracking a second implementation of Git
 semantics.
 
 ### II. Strict One-Way Layered Architecture
@@ -46,25 +53,36 @@ testable, and safe to change without hidden coupling.
 
 ### III. Confirm Before Destructive Actions (NON-NEGOTIABLE)
 `delete` and `batch-delete` use `git branch -D` (force delete, ignoring unmerged-changes
-safety). Both flows MUST always prompt for an explicit `yes`/`y` confirmation
-(`promptui.Prompt{IsConfirm: true}`) before invoking `core.GitClient`, and this
-confirm-before-force-delete pattern MUST be preserved in any change that touches these flows.
-Rationale: force-delete is irreversible and can silently discard unmerged work if left
-unguarded; an explicit confirmation is the only safety net.
+safety), and `reset` reverts tracked changes with `git reset --hard` (plus `git clean -fd`
+when invoked with `--hard`). Every flow that has destructive work to perform MUST prompt for
+an explicit `yes`/`y` confirmation before invoking `core.GitClient` — via the shared
+`confirmYesNo` helper in `execution/common.go`, which accepts `y`/`yes` case-insensitively
+and intentionally avoids promptui's `IsConfirm: true` mode (its built-in accept check rejects
+`yes`, which would let the rendered prompt and the actual outcome disagree). `reset` may skip
+the prompt only when there is nothing to revert. This confirm-before-destructive pattern MUST
+be preserved in any change that touches these flows.
+Rationale: force-delete and hard-reset are irreversible and can silently discard unmerged or
+uncommitted work if left unguarded; an explicit confirmation is the only safety net.
 
 ### IV. Centralized, Predictable Error Handling
 `execution` functions MUST return `error` rather than printing failures themselves;
 `main.go` is the single place that prints errors returned from execution functions. The
-only sanctioned exception is the two delete flows, which print an abort message directly
-on user cancellation. New subcommands MUST follow this same convention.
+sanctioned exceptions are: (a) the two delete flows and `reset`'s cancellation message, which
+print directly on user cancellation; and (b) `switch`'s pre-listing refresh warning — a
+failure the specification deliberately converts into a warn-and-continue outcome, which
+`execution/switch.go` prints once as informational output and MUST NOT return (returning it
+would abort the command in `main.go` and contradict the warn-and-continue contract). Every
+other failure MUST be returned. New subcommands MUST follow this same convention.
 Rationale: one predictable place to reason about user-facing failure output avoids scattered,
-inconsistent error presentation.
+inconsistent error presentation — while letting a specification explicitly downgrade a
+failure to a non-fatal warning without that warning being mistaken for a fatal error.
 
 ### V. Minimal Dependencies & Idiomatic Go Simplicity
 The dependency footprint MUST stay small and deliberate — currently `fatih/color`,
-`jedib0t/go-pretty/v6`, and `manifoldco/promptui`. New dependencies (in particular a Git
-library or a heavyweight CLI/UI framework) require explicit justification against this
-principle. All code MUST pass `go fmt ./...` and `go vet ./...`.
+`jedib0t/go-pretty/v6`, `manifoldco/promptui`, and `golang.org/x/term` (raw key-press input
+for the `status` view). New dependencies (in particular a Git library or a heavyweight
+CLI/UI framework) require explicit justification against this principle. All code MUST pass
+`go fmt ./...` and `go vet ./...`.
 Rationale: a small, fast, easily-auditable CLI is the project's core value proposition;
 every added dependency erodes that.
 
@@ -81,20 +99,42 @@ every added dependency erodes that.
   `NewDummyBranch("Cancel ...")` entry; the multi-select flow (`batch-delete`) prepends a
   `NewDoneBranch("Done")` entry and recurses until "Done" is chosen. New interactive flows
   MUST follow this same sentinel pattern instead of introducing bespoke exit handling.
-- Licensed under MIT. No user data leaves the local machine — the tool only shells out to
-  the local `git` binary and never makes network calls.
+- Licensed under MIT. No data generated by the tool itself leaves the local machine: all Git
+  interaction happens by shelling out to the local `git` binary (Principle I).
+- All network activity is performed by `git` itself and only where a command requires it:
+  `push`, `pull`, `fetch`, and — in `switch` — two refreshes: **(a)** the pre-listing refresh
+  that MUST run on every invocation with at least one configured remote, before the selection
+  list is built, covering **all** configured remotes (`git fetch --all --prune`: every remote
+  is attempted even when another fails, and refs deleted upstream are pruned so they stop
+  being listed); if that refresh fails — fully or partially — `switch` MUST print exactly one
+  warning carrying git's own message and continue with the last known state (never abort,
+  never hang, never block selection — the command stays usable offline), and with **no**
+  remote configured the refresh MUST be skipped entirely so output stays identical to a
+  pre-network run; **(b)** the selection-time refresh that MUST run when a remote-only branch
+  is selected (before the checkout, so the user lands on the branch's current remote tip; if
+  that refresh fails, the switch MUST abort with an error and no branch change). Rendering a
+  `switch` list is therefore preceded by refresh (a) — that is the only list rendering
+  permitted to touch the network; rendering `list`, `delete`, and `batch-delete` output MUST
+  NOT perform network operations. Selecting a local branch in `switch` MUST NOT perform any
+  sync/fetch — the tool only switches to it and restores that branch's local state.
+- Reading the refresh's feedback MUST NOT block or hide the result: the progress display is
+  finished before any warning or list renders, and a repository with zero configured remotes
+  MUST produce no refresh banner, no warning, and no extra prompt.
 
 ## Development Workflow
 
 - Build via `go build -o gogit-branch .`, or `./scripts/build.sh [output-name]` for
   version-stamped builds mirroring CI/release builds.
 - `go fmt ./...` and `go vet ./...` MUST pass before work is considered complete.
-- There is currently no test suite (`go test ./...` finds no tests). New user-facing
+- Unit tests exist for pure, non-git-invoking logic only (branch-name validation,
+  status-line categorization, branch-line parsing); there is no end-to-end harness, so
+  git-invoking flows are validated manually per each feature's quickstart. New user-facing
   functionality SHOULD add tests per the README's contribution guidelines, and any
   user-facing change MUST update the relevant documentation (README.md and/or CLAUDE.md).
 - One subcommand = one file under `execution/`, with a single exported entry point wired
   into `main.go`'s command dispatch table (`list`/`ls`, `switch`/`sw`, `delete`/`del`,
-  `batch-delete`/`bd`, `version`/`v`, `help`/`h`).
+  `batch-delete`/`bd`, `create`/`c`, `status`/`st`, `push`/`p`, `pull`/`pl`, `log`/`l`,
+  `reset`/`r`, `version`/`v`, `help`/`h`).
 
 ## Governance
 
@@ -109,4 +149,4 @@ architecture (Principle II). Complexity or new dependencies that conflict with P
 must be justified in the PR description before merging. Use CLAUDE.md for day-to-day runtime
 development guidance; this constitution governs when the two conflict.
 
-**Version**: 1.0.0 | **Ratified**: 2024-07-22 | **Last Amended**: 2026-08-05
+**Version**: 1.2.0 | **Ratified**: 2024-07-22 | **Last Amended**: 2026-09-25

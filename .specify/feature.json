@@ -1,1 +1,3 @@
-{"feature_directory":"specs/011-pull-progress-bar"}
+{
+  "feature_directory": "specs/013-switch-fetch-before-list"
+}
