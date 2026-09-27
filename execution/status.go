@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	KEY_COMMIT = 'c'
-	KEY_ADD    = 'a'
+	KEY_COMMIT = 'm'
+	KEY_ADD    = 'u'
 	KEY_EXIT   = 'e'
 
 	STATUS_TAB_WIDTH = 8
@@ -232,7 +232,7 @@ func printFileSection(header string, rows []renderRow, indent, target int) {
 // on a single line for at-a-glance scanning.
 func printOptions() {
 	color.Cyan("Options")
-	fmt.Println("  (c)ommit all tracked files  |  (a)dd untracked files and then commit all  |  (e)xit")
+	fmt.Println("  co(m)mit all tracked files  |  add (u)ntracked files and then commit all  |  (e)xit")
 }
 
 // promptForCommitMessage asks the user for a commit message and trims

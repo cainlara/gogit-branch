@@ -24,7 +24,7 @@ func PrintHelp(withError, withUsage bool) {
 		fmt.Println()
 		color.Green("Usage:")
 		fmt.Println("batch-delete, bd:\tList all the available branches, allowing you to select multiple branches to delete.")
-		fmt.Println("clone, cl:\t\tClone a remote repository into the current directory (optional name/email identity, or -anon to skip), including submodules.")
+		fmt.Println("clone, cl:\t\tClone a remote repository into the current directory (optional name/email identity, or -anon to skip), including submodules. A supplied email is recorded enclosed in < and > unless already enclosed.")
 		fmt.Println("create, c:\t\tCreate a new branch and switch to it.")
 		fmt.Println("delete, del:\t\tList all the branches available to delete.")
 		fmt.Println("help, h:\t\tShow this help.")

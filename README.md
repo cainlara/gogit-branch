@@ -230,6 +230,14 @@ gogit clone https://github.com/org/repo.git "Jane Doe" "jane@example.com"
 The name and email are recorded as the clone's commit identity, scoped to that clone only —
 your global configuration is never touched.
 
+A supplied email is recorded enclosed in `<` and `>` unless you already enclosed it:
+
+```bash
+gogit clone https://github.com/org/repo.git "Jane Doe" "jane@example.com"
+# user.email recorded as: <jane@example.com>
+# "<jane@example.com>" is taken as it is — never double-enclosed; an empty answer skips it.
+```
+
 **Prompted (URL only):** after a successful clone the tool asks for a user name and then a
 user email. An empty answer skips that field; two empty answers skip identity entirely
 (same effect as `-anon`). Cancelling the prompts keeps the clone and skips identity setup.
@@ -302,7 +310,7 @@ Untracked files
   untracked.txt
 
 Options
-    (c)ommit all tracked files  |  (a)dd untracked files and then commit all  |  (e)xit
+    co(m)mit all tracked files  |  add (u)ntracked files and then commit all  |  (e)xit
 ```
 
 This mirrors everything a plain `git status` would tell you — current branch (or detached-HEAD
@@ -311,14 +319,14 @@ state), upstream tracking/ahead-behind counts, and every tracked file colored by
 unstaged change — plus untracked files in their own distinct color. Nothing is left out.
 
 Press a single key to act, no Enter required:
-- **`c`** — prompts for a commit message and commits all tracked changes
-- **`a`** — prompts for a commit message, stages every tracked and untracked change, and
+- **`m`** — prompts for a commit message and commits all tracked changes
+- **`u`** — prompts for a commit message, stages every tracked and untracked change, and
   commits everything together
 - **`e`** — exits immediately with no changes
 - Any other key is ignored
 
-A commit message is required for both `c` and `a`; an empty (or whitespace-only) message is
-rejected with a clear error and nothing is committed — for `a`, nothing is staged either.
+A commit message is required for both `m` and `u`; an empty (or whitespace-only) message is
+rejected with a clear error and nothing is committed — for `u`, nothing is staged either.
 
 #### Pull the Current Branch
 ```bash

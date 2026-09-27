@@ -79,6 +79,33 @@ func parseCloneArgs(args []string) (cloneArgs, error) {
 	}
 }
 
+// encloseEmail normalizes the email value recorded for the clone (spec FR-001…FR-004,
+// FR-006, FR-011; contract contracts/clone-email-enclosing.md §1):
+//  1. surrounding whitespace removed
+//  2. empty result ⇒ "" — the caller skips the setting, never "<>"
+//  3. already begins "<" AND ends ">" ⇒ returned as-is (taken as it is)
+//  4. only one of the two brackets present ⇒ the missing one is added (never a second pair)
+//  5. otherwise ⇒ wrapped in "<" and ">"
+//
+// No email-format validation anywhere (FR-011). Pure: no git, no TTY — unit-testable
+// (research D2/D4).
+func encloseEmail(value string) string {
+	v := strings.TrimSpace(value)
+
+	switch {
+	case v == "":
+		return ""
+	case strings.HasPrefix(v, "<") && strings.HasSuffix(v, ">"):
+		return v
+	case strings.HasPrefix(v, "<"):
+		return v + ">"
+	case strings.HasSuffix(v, ">"):
+		return "<" + v
+	default:
+		return "<" + v + ">"
+	}
+}
+
 // CloneRepository is the single entry point for the `clone`/`cl` subcommand
 // (Constitution II: one subcommand = one execution file, one exported entry
 // point). It validates arguments first (nothing runs on a bad shape), then
@@ -128,7 +155,7 @@ func applyIdentity(gitClient *core.GitClient, parsed cloneArgs) error {
 
 		return nil
 	case parsed.Name != "" || parsed.Email != "":
-		if err := gitClient.SetLocalIdentity(core.TargetDirFromURL(parsed.URL), parsed.Name, parsed.Email); err != nil {
+		if err := gitClient.SetLocalIdentity(core.TargetDirFromURL(parsed.URL), parsed.Name, encloseEmail(parsed.Email)); err != nil {
 			return err
 		}
 
@@ -176,7 +203,7 @@ func promptForIdentity(gitClient *core.GitClient, url string) error {
 		return nil
 	}
 
-	if err := gitClient.SetLocalIdentity(core.TargetDirFromURL(url), name, email); err != nil {
+	if err := gitClient.SetLocalIdentity(core.TargetDirFromURL(url), name, encloseEmail(email)); err != nil {
 		return err
 	}
 
