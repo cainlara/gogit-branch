@@ -31,6 +31,7 @@ func TestParseCloneArgs(t *testing.T) {
 		{name: "surplus token", args: []string{"u", "n", "e", "extra"}, wantErr: true,
 			errSubstr: "unexpected arguments"},
 		{name: "empty name value", args: []string{"u", "", "e"}, wantErr: true, errSubstr: "non-empty"},
+		{name: "empty email value", args: []string{"u", "n", ""}, wantErr: true, errSubstr: "non-empty"},
 	}
 
 	for _, c := range cases {
@@ -58,5 +59,52 @@ func TestParseCloneArgs(t *testing.T) {
 					c.args, got, c.wantURL, c.wantName, c.wantMail, c.wantAnon)
 			}
 		})
+	}
+}
+
+func TestEncloseEmail(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "jane@example.com", want: "<jane@example.com>"},
+		{in: "<jane@example.com>", want: "<jane@example.com>"},
+		{in: "<jane@example.com", want: "<jane@example.com>"},
+		{in: "jane@example.com>", want: "<jane@example.com>"},
+		{in: "  jane@example.com  ", want: "<jane@example.com>"},
+		{in: "", want: ""},
+		{in: "   ", want: ""},
+		{in: "<>", want: "<>"},
+		{in: "<", want: "<>"},
+		{in: ">", want: "<>"},
+		{in: "a<b>c@x.y", want: "<a<b>c@x.y>"},
+		{in: "<a<b>c@x.y>", want: "<a<b>c@x.y>"},
+		{in: "jane at example.com", want: "<jane at example.com>"},
+	}
+
+	for _, c := range cases {
+		if got := encloseEmail(c.in); got != c.want {
+			t.Errorf("encloseEmail(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestEncloseEmailIdempotent(t *testing.T) {
+	inputs := []string{
+		"jane@example.com",
+		"<jane@example.com>",
+		"<jane@example.com",
+		"jane@example.com>",
+		"  jane@example.com  ",
+		"",
+		"<>",
+		"a<b>c@x.y",
+	}
+
+	for _, in := range inputs {
+		once := encloseEmail(in)
+		if twice := encloseEmail(once); twice != once {
+			t.Errorf("encloseEmail not idempotent: enclose(%q)=%q, enclose again=%q", in, once, twice)
+		}
 	}
 }
