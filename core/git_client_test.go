@@ -529,3 +529,317 @@ func TestTargetDirFromURL(t *testing.T) {
 		})
 	}
 }
+
+func TestParseUnifiedDiff(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want []model.FileChange
+	}{
+		{
+			name: "modified file with replaced and added lines",
+			text: "diff --git a/f1.txt b/f1.txt\n" +
+				"index de98044..bb79aec 100644\n" +
+				"--- a/f1.txt\n" +
+				"+++ b/f1.txt\n" +
+				"@@ -2 +2 @@ a\n" +
+				"-b\n" +
+				"+B\n" +
+				"@@ -3,0 +4 @@ c\n" +
+				"+D\n",
+			want: []model.FileChange{
+				fileWithLines("f1.txt", model.CHANGE_KIND_MODIFIED, "",
+					model.NewLineChange(model.LINE_KIND_MODIFIED, "B"),
+					model.NewLineChange(model.LINE_KIND_ADDED, "D"),
+				),
+			},
+		},
+		{
+			name: "deleted file keeps its lines for the parser",
+			text: "diff --git a/f2.txt b/f2.txt\n" +
+				"deleted file mode 100644\n" +
+				"index b77b4eb..0000000\n" +
+				"--- a/f2.txt\n" +
+				"+++ /dev/null\n" +
+				"@@ -1,2 +0,0 @@\n" +
+				"-x\n" +
+				"-y\n",
+			want: []model.FileChange{
+				fileWithLines("f2.txt", model.CHANGE_KIND_DELETED, "",
+					model.NewLineChange(model.LINE_KIND_REMOVED, "x"),
+					model.NewLineChange(model.LINE_KIND_REMOVED, "y"),
+				),
+			},
+		},
+		{
+			name: "added file",
+			text: "diff --git a/f3.txt b/f3.txt\n" +
+				"new file mode 100644\n" +
+				"index 0000000..3e75765\n" +
+				"--- /dev/null\n" +
+				"+++ b/f3.txt\n" +
+				"@@ -0,0 +1 @@\n" +
+				"+new\n",
+			want: []model.FileChange{
+				fileWithLines("f3.txt", model.CHANGE_KIND_ADDED, "",
+					model.NewLineChange(model.LINE_KIND_ADDED, "new"),
+				),
+			},
+		},
+		{
+			name: "pure rename has no lines and records the old path",
+			text: "diff --git a/pure.txt b/renamed.txt\n" +
+				"similarity index 100%\n" +
+				"rename from pure.txt\n" +
+				"rename to renamed.txt\n",
+			want: []model.FileChange{
+				fileWithLines("renamed.txt", model.CHANGE_KIND_RENAMED, "pure.txt"),
+			},
+		},
+		{
+			name: "rename with edits keeps rename kind plus line entries",
+			text: "diff --git a/old.txt b/new.txt\n" +
+				"similarity index 50%\n" +
+				"rename from old.txt\n" +
+				"rename to new.txt\n" +
+				"index 1111111..2222222 100644\n" +
+				"--- a/old.txt\n" +
+				"+++ b/new.txt\n" +
+				"@@ -1 +1 @@\n" +
+				"-keep\n" +
+				"+KEEP\n",
+			want: []model.FileChange{
+				fileWithLines("new.txt", model.CHANGE_KIND_RENAMED, "old.txt",
+					model.NewLineChange(model.LINE_KIND_MODIFIED, "KEEP"),
+				),
+			},
+		},
+		{
+			name: "binary change marks isBinary with no line entries",
+			text: "diff --git a/real.bin b/real.bin\n" +
+				"index c52e049..4891f69 100644\n" +
+				"Binary files a/real.bin and b/real.bin differ\n",
+			want: []model.FileChange{
+				fileWithLines("real.bin", model.CHANGE_KIND_MODIFIED, ""),
+			},
+		},
+		{
+			name: "no-newline marker never becomes an entry",
+			text: "diff --git a/nl.txt b/nl.txt\n" +
+				"index 1111111..2222222 100644\n" +
+				"--- a/nl.txt\n" +
+				"+++ b/nl.txt\n" +
+				"@@ -1 +1 @@\n" +
+				"-BIN123\n" +
+				"\\ No newline at end of file\n" +
+				"+BIN456\n" +
+				"\\ No newline at end of file\n",
+			want: []model.FileChange{
+				fileWithLines("nl.txt", model.CHANGE_KIND_MODIFIED, "",
+					model.NewLineChange(model.LINE_KIND_MODIFIED, "BIN456"),
+				),
+			},
+		},
+		{
+			name: "multiple sections keep diff emission order",
+			text: "diff --git a/a.txt b/a.txt\n" +
+				"index 1111111..2222222 100644\n" +
+				"--- a/a.txt\n" +
+				"+++ b/a.txt\n" +
+				"@@ -1 +1 @@\n" +
+				"-one\n" +
+				"+two\n" +
+				"diff --git b/b.txt b/b.txt\n" +
+				"new file mode 100644\n" +
+				"index 0000000..3333333\n" +
+				"--- /dev/null\n" +
+				"+++ b/b.txt\n" +
+				"@@ -0,0 +1 @@\n" +
+				"+fresh\n",
+			want: []model.FileChange{
+				fileWithLines("a.txt", model.CHANGE_KIND_MODIFIED, "",
+					model.NewLineChange(model.LINE_KIND_MODIFIED, "two"),
+				),
+				fileWithLines("b.txt", model.CHANGE_KIND_ADDED, "",
+					model.NewLineChange(model.LINE_KIND_ADDED, "fresh"),
+				),
+			},
+		},
+		{
+			name: "path containing spaces splits at the last b/",
+			text: "diff --git a/my file.txt b/my file.txt\n" +
+				"index 1111111..2222222 100644\n" +
+				"--- a/my file.txt\n" +
+				"+++ b/my file.txt\n" +
+				"@@ -1 +1 @@\n" +
+				"-old\n" +
+				"+new\n",
+			want: []model.FileChange{
+				fileWithLines("my file.txt", model.CHANGE_KIND_MODIFIED, "",
+					model.NewLineChange(model.LINE_KIND_MODIFIED, "new"),
+				),
+			},
+		},
+		{
+			name: "quoted header paths are unquoted",
+			text: "diff --git \"a/sp\\tace.txt\" \"b/sp\\tace.txt\"\n" +
+				"index 1111111..2222222 100644\n" +
+				"--- \"a/sp\\tace.txt\"\n" +
+				"+++ \"b/sp\\tace.txt\"\n" +
+				"@@ -1 +1 @@\n" +
+				"-old\n" +
+				"+new\n",
+			want: []model.FileChange{
+				fileWithLines("sp\tace.txt", model.CHANGE_KIND_MODIFIED, "",
+					model.NewLineChange(model.LINE_KIND_MODIFIED, "new"),
+				),
+			},
+		},
+		{
+			name: "empty text yields no sections",
+			text: "",
+			want: []model.FileChange{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseUnifiedDiff(tt.text)
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("parseUnifiedDiff() returned %d sections, want %d", len(got), len(tt.want))
+			}
+
+			for i := range got {
+				if got[i].GetPath() != tt.want[i].GetPath() {
+					t.Errorf("section %d path = %q, want %q", i, got[i].GetPath(), tt.want[i].GetPath())
+				}
+
+				if got[i].GetKind() != tt.want[i].GetKind() {
+					t.Errorf("section %d kind = %q, want %q", i, got[i].GetKind(), tt.want[i].GetKind())
+				}
+
+				if got[i].GetRenamedFrom() != tt.want[i].GetRenamedFrom() {
+					t.Errorf("section %d renamedFrom = %q, want %q", i, got[i].GetRenamedFrom(), tt.want[i].GetRenamedFrom())
+				}
+
+				binaryWant := tt.want[i].IsBinary()
+				if tt.name == "binary change marks isBinary with no line entries" {
+					binaryWant = true
+				}
+
+				if got[i].IsBinary() != binaryWant {
+					t.Errorf("section %d isBinary = %v, want %v", i, got[i].IsBinary(), binaryWant)
+				}
+
+				lines := got[i].GetLines()
+				wantLines := tt.want[i].GetLines()
+
+				if len(lines) != len(wantLines) {
+					t.Fatalf("section %d has %d lines, want %d", i, len(lines), len(wantLines))
+				}
+
+				for j := range lines {
+					if lines[j].GetKind() != wantLines[j].GetKind() || lines[j].GetContent() != wantLines[j].GetContent() {
+						t.Errorf("section %d line %d = (%q, %q), want (%q, %q)",
+							i, j, lines[j].GetKind(), lines[j].GetContent(),
+							wantLines[j].GetKind(), wantLines[j].GetContent())
+					}
+				}
+			}
+		})
+	}
+}
+
+func fileWithLines(path, kind, renamedFrom string, lines ...model.LineChange) model.FileChange {
+	f := model.NewFileChange(path, kind)
+
+	if renamedFrom != "" {
+		f.SetRenamedFrom(renamedFrom)
+	}
+
+	for _, line := range lines {
+		f.AddLine(line)
+	}
+
+	return *f
+}
+
+func TestPairChangeBlock(t *testing.T) {
+	tests := []struct {
+		name    string
+		removed []string
+		added   []string
+		want    []model.LineChange
+	}{
+		{
+			name:    "equal counts pair index-wise into modified entries",
+			removed: []string{"a", "b"},
+			added:   []string{"A", "B"},
+			want: []model.LineChange{
+				model.NewLineChange(model.LINE_KIND_MODIFIED, "A"),
+				model.NewLineChange(model.LINE_KIND_MODIFIED, "B"),
+			},
+		},
+		{
+			name:    "more removals than additions keeps leftover removals after pairs",
+			removed: []string{"x", "y", "z"},
+			added:   []string{"X"},
+			want: []model.LineChange{
+				model.NewLineChange(model.LINE_KIND_MODIFIED, "X"),
+				model.NewLineChange(model.LINE_KIND_REMOVED, "y"),
+				model.NewLineChange(model.LINE_KIND_REMOVED, "z"),
+			},
+		},
+		{
+			name:    "more additions than removals keeps leftover additions after pairs",
+			removed: []string{"x"},
+			added:   []string{"X", "Y", "Z"},
+			want: []model.LineChange{
+				model.NewLineChange(model.LINE_KIND_MODIFIED, "X"),
+				model.NewLineChange(model.LINE_KIND_ADDED, "Y"),
+				model.NewLineChange(model.LINE_KIND_ADDED, "Z"),
+			},
+		},
+		{
+			name:    "removal-only block stays pure removals",
+			removed: []string{"gone"},
+			added:   nil,
+			want: []model.LineChange{
+				model.NewLineChange(model.LINE_KIND_REMOVED, "gone"),
+			},
+		},
+		{
+			name:    "addition-only block stays pure additions",
+			removed: nil,
+			added:   []string{"fresh"},
+			want: []model.LineChange{
+				model.NewLineChange(model.LINE_KIND_ADDED, "fresh"),
+			},
+		},
+		{
+			name:    "both sides empty yields nothing",
+			removed: nil,
+			added:   nil,
+			want:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pairChangeBlock(tt.removed, tt.added)
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("pairChangeBlock() returned %d lines, want %d", len(got), len(tt.want))
+			}
+
+			for i := range got {
+				if got[i].GetKind() != tt.want[i].GetKind() || got[i].GetContent() != tt.want[i].GetContent() {
+					t.Errorf("line %d = (%q, %q), want (%q, %q)",
+						i, got[i].GetKind(), got[i].GetContent(),
+						tt.want[i].GetKind(), tt.want[i].GetContent())
+				}
+			}
+		})
+	}
+}

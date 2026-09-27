@@ -339,6 +339,11 @@ gogit pl
 ```
 Pulling branch
 Fetching remote updates...
+mod.txt
+m beta
+
+added.txt
++ fresh
 🚀 Pulled current branch from the remote
 ```
 
@@ -356,6 +361,18 @@ upstream, takes no arguments, and never discards uncommitted local changes: if i
 commits would overwrite them, git's own refusal is surfaced instead. Every failure (no
 upstream, detached HEAD, diverged history needing reconciliation, conflicting local
 changes) is reported exactly as git reports it; `pull` never force-merges or rebases.
+
+After a successful update, a change list is printed below the progress bar and above the
+success message: one section per changed file (a plain path heading followed by one line
+per change), separated by a blank line. Each change line starts with its marker — `+`
+added content (green), `-` removed content (red), `m` modified content (yellow, one
+entry per replaced line instead of a `-`/`+` pair) — followed by a space and the content.
+Special files get a note instead of line entries: deleted files show `(deleted)`,
+binary files show `(binary file — line-level detail unavailable)`, and pure renames show
+`(renamed from <old path>)`. The list covers only the commits pulled by this invocation
+(pre-existing uncommitted work never appears), is never truncated, and prints nothing
+when the branch was already up to date or when any list step fails — the pull's own
+result stays exactly as before.
 
 While fetching and pulling, a live progress bar is drawn alongside the static
 "Fetching remote updates..." line. The bar renders on the status stream

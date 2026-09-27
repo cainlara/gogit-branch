@@ -1027,3 +1027,264 @@ func TargetDirFromURL(url string) string {
 
 	return base
 }
+
+// HeadCommit returns the current HEAD commit hash (`git rev-parse HEAD`). It
+// is the pull change list's baseline capture (research.md D1): called once
+// before the pull starts and again after a pull that reported updated=true, so
+// the two returned hashes are the commit endpoints the change list diffs.
+// A repository with no commits fails here — callers degrade to "no list"
+// (research.md D5, FR-009); the raw rev-parse error is returned unwrapped.
+func (g *GitClient) HeadCommit() (string, error) {
+	out, err := g.runGitCommand("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(out)), nil
+}
+
+// ChangeList computes the change list between two commit endpoints with ONE
+// local, read-only invocation — `git diff --no-color --find-renames
+// --unified=0 <oldRev> <newRev>` (research.md D2): --no-color defeats a user's
+// color.ui=always, --find-renames defeats diff.renames=false so a rename keeps
+// listing under its new path (spec rename edge case), and -U0 yields change
+// blocks only. Sections keep git's emission order (path order, contract F4).
+// Empty revisions or identical endpoints yield no list (FR-007); a diff
+// failure is returned so callers can degrade to silence (FR-009, research D5).
+func (g *GitClient) ChangeList(oldRev, newRev string) ([]model.FileChange, error) {
+	if oldRev == "" || newRev == "" || oldRev == newRev {
+		return nil, nil
+	}
+
+	out, err := g.runGitCommand("diff", "--no-color", "--find-renames", "--unified=0", oldRev, newRev)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseUnifiedDiff(string(out)), nil
+}
+
+const diffHeaderPrefix = "diff --git "
+
+// parseUnifiedDiff turns `git diff --no-color --find-renames --unified=0`
+// text into structured file sections (research.md D2/D6, contract §4 table):
+// file headers open a section; `new file mode`/`deleted file mode` classify
+// added/deleted; `rename from`/`rename to` classify renamed (recording the old
+// path); `Binary files … differ` marks isBinary; within a hunk every `-`/`+`
+// line becomes a line entry (minus its one-character marker) and the `\ No
+// newline at end of file` marker never becomes an entry. Pure function — the
+// only git-output parsing site for this feature (Constitution I).
+func parseUnifiedDiff(text string) []model.FileChange {
+	files := make([]model.FileChange, 0)
+
+	var current *model.FileChange
+	var pendingRemoved, pendingAdded []string
+	inHunk := false
+
+	flushBlock := func() {
+		if current == nil || (len(pendingRemoved) == 0 && len(pendingAdded) == 0) {
+			pendingRemoved, pendingAdded = nil, nil
+			return
+		}
+
+		for _, line := range pairChangeBlock(pendingRemoved, pendingAdded) {
+			current.AddLine(line)
+		}
+
+		pendingRemoved, pendingAdded = nil, nil
+	}
+
+	flush := func() {
+		if current != nil {
+			files = append(files, *current)
+			current = nil
+		}
+	}
+
+	for _, line := range strings.Split(text, "\n") {
+		switch {
+		case strings.HasPrefix(line, diffHeaderPrefix):
+			flushBlock()
+			flush()
+			inHunk = false
+			current = model.NewFileChange(parseDiffHeaderNewPath(line), model.CHANGE_KIND_MODIFIED)
+
+		case current == nil:
+			continue
+
+		case strings.HasPrefix(line, "new file mode"):
+			current.SetKind(model.CHANGE_KIND_ADDED)
+
+		case strings.HasPrefix(line, "deleted file mode"):
+			current.SetKind(model.CHANGE_KIND_DELETED)
+
+		case strings.HasPrefix(line, "rename from "):
+			current.SetKind(model.CHANGE_KIND_RENAMED)
+			current.SetRenamedFrom(strings.TrimPrefix(line, "rename from "))
+
+		case strings.HasPrefix(line, "Binary files "):
+			current.SetBinary(true)
+
+		case !inHunk && strings.HasPrefix(line, "--- "):
+			if p, ok := parseDiffSidePath(line[4:], "a/"); ok && current.GetPath() == "" {
+				current.SetPath(p)
+			}
+
+		case !inHunk && strings.HasPrefix(line, "+++ "):
+			if p, ok := parseDiffSidePath(line[4:], "b/"); ok && current.GetPath() == "" {
+				current.SetPath(p)
+			}
+
+		case strings.HasPrefix(line, "@@"):
+			flushBlock()
+			inHunk = true
+
+		case inHunk && strings.HasPrefix(line, "\\"):
+			continue // "\ No newline at end of file"
+
+		case inHunk && strings.HasPrefix(line, "-"):
+			if len(pendingAdded) > 0 {
+				flushBlock()
+			}
+			pendingRemoved = append(pendingRemoved, line[1:])
+
+		case inHunk && strings.HasPrefix(line, "+"):
+			pendingAdded = append(pendingAdded, line[1:])
+		}
+	}
+
+	flushBlock()
+	flush()
+
+	return files
+}
+
+// pairChangeBlock applies the pairing rule (research D3, contract M1/M2):
+// within one change block of R removed and A added lines, index-pair
+// removal i with addition i for i < min(R,A) — each pair becomes ONE
+// `modified` entry carrying the NEW content (FR-005: never a `-`/`+` pair) —
+// then any leftover removals render as `removed` and any leftover additions
+// as `added`. Pure function, unit-tested directly.
+func pairChangeBlock(removed, added []string) []model.LineChange {
+	paired := min(len(removed), len(added))
+	lines := make([]model.LineChange, 0, len(removed)+len(added))
+
+	for i := 0; i < paired; i++ {
+		lines = append(lines, model.NewLineChange(model.LINE_KIND_MODIFIED, added[i]))
+	}
+
+	for _, content := range removed[paired:] {
+		lines = append(lines, model.NewLineChange(model.LINE_KIND_REMOVED, content))
+	}
+
+	for _, content := range added[paired:] {
+		lines = append(lines, model.NewLineChange(model.LINE_KIND_ADDED, content))
+	}
+
+	return lines
+}
+
+// parseDiffHeaderNewPath extracts the post-pull path from a `diff --git
+// a/<old> b/<new>` header. Paths may contain spaces (the split is taken at the
+// LAST " b/") and may be quoted when they contain control characters; both
+// forms are handled, falling back to an empty path the caller then repairs
+// from the ---/+++ side lines.
+func parseDiffHeaderNewPath(line string) string {
+	rest := strings.TrimPrefix(line, diffHeaderPrefix)
+
+	if strings.HasPrefix(rest, "\"") {
+		if end := strings.Index(rest, `" "`); end > 0 {
+			return strings.TrimPrefix(unquoteDiffPath(rest[end+2:]), "b/")
+		}
+	}
+
+	idx := strings.LastIndex(rest, " b/")
+	if idx < 0 {
+		return ""
+	}
+
+	return unquoteDiffPath(rest[idx+3:])
+}
+
+// parseDiffSidePath reads the path from a `--- a/<path>` / `+++ b/<path>` side
+// line (already stripped of its prefix marker), reporting false for the
+// /dev/null sentinel and for quoted paths it cannot reliably rejoin.
+func parseDiffSidePath(rest string, sidePrefix string) (string, bool) {
+	rest = strings.TrimSuffix(strings.TrimSpace(rest), "\t")
+
+	if rest == "/dev/null" || rest == "" {
+		return "", false
+	}
+
+	rest = strings.TrimPrefix(unquoteDiffPath(rest), sidePrefix)
+
+	if rest == "" {
+		return "", false
+	}
+
+	return rest, true
+}
+
+// unquoteDiffPath unwraps git's C-style quoted path form (`"a/sp\tace.txt"`),
+// decoding the escapes git emits for control characters, quotes, backslashes,
+// and octal byte sequences. Non-quoted input is returned unchanged.
+func unquoteDiffPath(p string) string {
+	if len(p) < 2 || !strings.HasPrefix(p, "\"") || !strings.HasSuffix(p, "\"") {
+		return p
+	}
+
+	p = p[1 : len(p)-1]
+
+	var b strings.Builder
+	b.Grow(len(p))
+
+	for i := 0; i < len(p); i++ {
+		c := p[i]
+
+		if c != '\\' || i+1 >= len(p) {
+			b.WriteByte(c)
+			continue
+		}
+
+		i++
+
+		switch p[i] {
+		case 'a':
+			b.WriteByte('\a')
+		case 'b':
+			b.WriteByte('\b')
+		case 'f':
+			b.WriteByte('\f')
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		case 't':
+			b.WriteByte('\t')
+		case 'v':
+			b.WriteByte('\v')
+		case '\\', '"':
+			b.WriteByte(p[i])
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			end := i
+			for end < len(p) && end < i+3 && p[end] >= '0' && p[end] <= '7' {
+				end++
+			}
+
+			v, err := strconv.ParseUint(p[i:end], 8, 8)
+			if err != nil {
+				b.WriteByte('\\')
+				b.WriteByte(p[i])
+				break
+			}
+
+			b.WriteByte(byte(v))
+			i = end - 1
+		default:
+			b.WriteByte('\\')
+			b.WriteByte(p[i])
+		}
+	}
+
+	return b.String()
+}
