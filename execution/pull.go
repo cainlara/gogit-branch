@@ -23,10 +23,20 @@ import (
 // deferred finish() is an idempotent panic guard behind that explicit call.
 // The git steps themselves are unchanged: no --force/--rebase, identical
 // outcome classification and error wrapping (FR-005/FR-006).
+//
+// Feature 016 adds the change list: the HEAD baseline is captured before the
+// fetch, and after the bar finishes a successful "updated" pull prints the
+// change list BEFORE the success message — frozen order progress bar → change
+// list → success message (FR-001a, clarification 2026-09-27 → B). Every list
+// step degrades to silence (no baseline, up-to-date, diff failure, zero
+// sections) so the descriptive output can never alter the pull's outcome
+// (FR-009, research D5); no prompt is involved (FR-011).
 func PullCurrentBranch(gitClient *core.GitClient) error {
 	fmt.Println()
 	color.Cyan("Pulling branch")
 	color.Cyan("Fetching remote updates...")
+
+	baseline, _ := gitClient.HeadCommit()
 
 	bar := newStatusStreamRenderer()
 	defer bar.finish()
@@ -51,10 +61,37 @@ func PullCurrentBranch(gitClient *core.GitClient) error {
 	}
 
 	if updated {
+		printChangeList(gitClient, baseline)
 		color.Green(fmt.Sprintf("%s Pulled current branch from the remote", EMOJI_ROCKET))
 	} else {
 		color.Green(fmt.Sprintf("%s Branch already up to date", EMOJI_HERB))
 	}
 
 	return nil
+}
+
+// printChangeList renders the change list between the cleared progress bar and
+// the success message (FR-001a). It is descriptive-only by contract: a missing
+// baseline (zero-commit repository), an unchanged HEAD, a failed diff, or a
+// diff with zero sections each print nothing and never surface an error
+// (FR-007, FR-008, FR-009 — research D5). Pre-existing uncommitted work cannot
+// appear because only the two commit endpoints are diffed (FR-006).
+func printChangeList(gitClient *core.GitClient, baseline string) {
+	if baseline == "" {
+		return
+	}
+
+	head, err := gitClient.HeadCommit()
+	if err != nil || head == baseline {
+		return
+	}
+
+	changes, err := gitClient.ChangeList(baseline, head)
+	if err != nil {
+		return
+	}
+
+	if text := composeChangeList(changes); text != "" {
+		fmt.Print(text)
+	}
 }
