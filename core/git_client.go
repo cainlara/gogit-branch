@@ -486,6 +486,43 @@ func (g *GitClient) AddAllAndCommit(message string) error {
 	return nil
 }
 
+// StageFiles stages exactly the given paths via `git add -- <paths...>`; the
+// `--` separator guards dash-led or otherwise ambiguous pathspecs. An empty
+// path list is a caller bug and errors without invoking git.
+func (g *GitClient) StageFiles(paths []string) error {
+	if len(paths) == 0 {
+		return errors.New("no paths to stage")
+	}
+
+	args := append([]string{"add", "--"}, paths...)
+
+	out, err := g.runGitCommandCombinedOutput(args...)
+	if err != nil {
+		output := string(out)
+
+		if strings.HasPrefix(output, OUTPUT_ERROR_PREFIX) || strings.HasPrefix(output, OUTPUT_FATAL_PREFIX) {
+			return errors.New(output)
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+// AddFilesAndCommit stages exactly the given paths, then commits with the
+// same shape as CommitTracked (`git commit -a -m`): tracked modifications
+// and deletions join the commit via -a while the staged (new) files ride
+// the index. If staging succeeds but the commit fails, the staged files are
+// left staged — no rollback is attempted (AddAllAndCommit's contract).
+func (g *GitClient) AddFilesAndCommit(paths []string, message string) error {
+	if err := g.StageFiles(paths); err != nil {
+		return err
+	}
+
+	return g.CommitTracked(message)
+}
+
 // Push runs `git push` for the current branch. If that fails specifically
 // because the current branch has no upstream configured yet, it resolves
 // the current branch name and retries once as

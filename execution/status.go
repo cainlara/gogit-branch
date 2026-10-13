@@ -17,6 +17,7 @@ import (
 const (
 	KEY_COMMIT = 'm'
 	KEY_ADD    = 'u'
+	KEY_SELECT = 's'
 	KEY_EXIT   = 'e'
 
 	STATUS_TAB_WIDTH = 8
@@ -228,11 +229,11 @@ func printFileSection(header string, rows []renderRow, indent, target int) {
 	}
 }
 
-// printOptions renders the third section: the three fixed actions (FR-005),
-// on a single line for at-a-glance scanning.
+// printOptions renders the third section: the four fixed actions (FR-001,
+// FR-005), on a single line for at-a-glance scanning.
 func printOptions() {
 	color.Cyan("Options")
-	fmt.Println("  co(m)mit all tracked files  |  add (u)ntracked files and then commit all  |  (e)xit")
+	fmt.Println("  co(m)mit all tracked files  |  add (u)ntracked files and then commit all  |  (s)elect files to commit  |  (e)xit")
 }
 
 // promptForCommitMessage asks the user for a commit message and trims
@@ -310,6 +311,48 @@ func handleAddAndCommit(gitClient *core.GitClient, status *model.RepositoryStatu
 	return nil
 }
 
+// handleSelectAndCommit implements the 's' action: pick a subset of the
+// untracked files in a multi-select dialog, then commit them together with
+// tracked changes (FR-006, clarified FR-009). The commit message is
+// prompted BEFORE any staging, so a cancelled or empty prompt leaves
+// nothing staged (US3.3). completed=false means "no commit happened —
+// keep looping on the options key" (FR-007, FR-008).
+func handleSelectAndCommit(gitClient *core.GitClient, status *model.RepositoryStatus) (bool, error) {
+	untracked := status.GetUntracked()
+
+	if len(untracked) == 0 {
+		color.Yellow("Nothing to select — there are no untracked files.")
+
+		return false, nil
+	}
+
+	selected, err := selectUntrackedFiles(0, buildSelectRows(untracked))
+	if err != nil {
+		return false, nil
+	}
+
+	if len(selected) == 0 {
+		return false, nil
+	}
+
+	message, err := promptForCommitMessage()
+	if err != nil {
+		return false, err
+	}
+
+	if err := requireNonEmptyMessage(message); err != nil {
+		return false, err
+	}
+
+	if err := gitClient.AddFilesAndCommit(selected, strings.TrimSpace(message)); err != nil {
+		return false, err
+	}
+
+	color.Green("%s Committed selected untracked files", EMOJI_HERB)
+
+	return true, nil
+}
+
 // ShowStatusAndOperate renders the repository's working tree state as three
 // sections and lets the user act on it via a single key press.
 func ShowStatusAndOperate(gitClient *core.GitClient) error {
@@ -348,6 +391,15 @@ func ShowStatusAndOperate(gitClient *core.GitClient) error {
 			return handleCommitTracked(gitClient, status)
 		case KEY_ADD:
 			return handleAddAndCommit(gitClient, status)
+		case KEY_SELECT:
+			completed, err := handleSelectAndCommit(gitClient, status)
+			if err != nil {
+				return err
+			}
+
+			if completed {
+				return nil
+			}
 		case KEY_EXIT:
 			return nil
 		default:

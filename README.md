@@ -96,7 +96,7 @@ If no command is provided, the tool defaults to show current version.
 | [`pull`](#pull-the-current-branch) | `pl` | Fetch remote updates first, then pull the current branch from its upstream |
 | [`push`](#push-the-current-branch) | `p` | Push the current branch, automatically setting the upstream first if it isn't tracked yet |
 | [`reset`](#discard-local-changes) | `r` | **DANGER**: irreversibly discard uncommitted changes (add `--hard` to also remove untracked files) |
-| [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions |
+| [`status`](#view-and-act-on-repository-status) | `st` | Show a colorized, key-driven view of tracked/untracked changes, with quick commit actions (tracked-only, everything, or a selected subset of untracked files) |
 | [`switch`](#switch-branches) | `sw` | Interactively browse local and remote-only branches (marked `l`/`r`) and switch to the selection |
 | [`version`](#show-current-version) | `v` | Show the version of this humble tool. |
 
@@ -310,7 +310,7 @@ Untracked files
   untracked.txt
 
 Options
-    co(m)mit all tracked files  |  add (u)ntracked files and then commit all  |  (e)xit
+    co(m)mit all tracked files  |  add (u)ntracked files and then commit all  |  (s)elect files to commit  |  (e)xit
 ```
 
 This mirrors everything a plain `git status` would tell you — current branch (or detached-HEAD
@@ -322,11 +322,18 @@ Press a single key to act, no Enter required:
 - **`m`** — prompts for a commit message and commits all tracked changes
 - **`u`** — prompts for a commit message, stages every tracked and untracked change, and
   commits everything together
+- **`s`** — opens a multi-select dialog listing every untracked file; toggle the ones
+  you want to include (`Toggle all` flips every file at once), pick `Done` to confirm,
+  then enter a commit message. Only the selected untracked files are staged; tracked
+  changes join the commit just like `u`. Cancelling the dialog (or selecting nothing)
+  returns to the options menu with nothing staged. With no untracked files, `s` just
+  reports there is nothing to select.
 - **`e`** — exits immediately with no changes
 - Any other key is ignored
 
-A commit message is required for both `m` and `u`; an empty (or whitespace-only) message is
-rejected with a clear error and nothing is committed — for `u`, nothing is staged either.
+A commit message is required for `m`, `u`, and `s`; an empty (or whitespace-only)
+message is rejected with a clear error and nothing is committed — for `u` and `s`,
+nothing is staged either (the message is asked before any staging happens).
 
 #### Pull the Current Branch
 ```bash
